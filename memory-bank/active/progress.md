@@ -59,3 +59,18 @@ Make Caret launch a pinned Screenpipe version, expose last-N history through a C
     - M2 and M3 still parallel after M1; M2 may use a fixture lease until M3 writes a live one
 * Insights
     - The previous preflight block was a stale creative, not a bad milestone list
+
+## 2026-09-19 - WORKING MODE
+
+* Decisions made
+    - Operator, this repo, today: move fast and GSD, happy-path focus. Hackathon — we ship, we do not polish. Preflight should treat extra contracts, schemas, and future-proofing as advisory at most, never blocking.
+
+## 2026-09-19 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Validated the replanned milestone list against the Level 4 preflight checks
+    - Recorded `PASS WITH ADVISORY` in `.preflight-status`
+* Decisions made
+    - All checks passed: prerequisites, checklist shape, coverage, scope, order (DAG agrees with checklist), invariants with handoff rules for pin and lease, per-milestone Done/Risks
+* Insights
+    - Advisory: a versioned, machine-checked lease contract in M1 would make the M2||M3 parallelism enforceable instead of prose-governed

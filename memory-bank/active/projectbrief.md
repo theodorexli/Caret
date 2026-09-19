@@ -26,6 +26,7 @@ Screenpipe is down, the wrong version is running, or last-N has no usable record
 2. Launching their binary does not inherit Caret’s Accessibility. That process needs its own grants.
 3. Caret stays a Swift popup plus `python3 -m caret`. Callers must not speak Screenpipe URLs or `AX*` tokens.
 4. Do not invent windows or continue inference when history is missing.
+5. Today (2026-09-19): hackathon GSD. Happy path only. Ship. Do not polish. Preflight must not block on niceties, extra contracts, or future-proofing.
 
 ## Acceptance Criteria
 
