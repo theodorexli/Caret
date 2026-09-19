@@ -44,6 +44,6 @@ The starter today only proves local preview math and local hold transitions on s
 
 - Supported scope ends before payment. Do not add purchases, hotel search, or multi-party polling.
 - Fixture content is synthetic and cannot be sent. A draft is created only from supported, sourced options.
-- The app currently observes focused fields and selections through Accessibility to position its trigger. Screenpipe history capture is not connected at the reviewed revision.
+- The app currently observes focused fields and selections through Accessibility to position its trigger. Caret.app launches pinned Screenpipe 0.4.50 on port 3031; last-N windows, minutes, and clipboard are available through `python3 -m caret`.
 - Live credentials and personal threads stay out of Git. Source integrations need explicit configuration.
 - External sending, calendar writes, Jev routing, and browser execution are **not connected**. Connecting them is future work, not an implied current capability.

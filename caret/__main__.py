@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from .planner import plan
-from .screenpipe import last_n_minutes, last_n_windows
+from .screenpipe import last_n_clipboard, last_n_minutes, last_n_windows
 from .skills import create_skill, filter_skills, list_skills
 from .store import Store
 
@@ -38,6 +38,9 @@ def main() -> int:
     windows = commands.add_parser("history-windows")
     windows.add_argument("--windows", type=int, default=3)
     windows.add_argument("--lease", type=Path, default=None)
+    clipboard = commands.add_parser("history-clipboard")
+    clipboard.add_argument("--count", type=int, default=3)
+    clipboard.add_argument("--lease", type=Path, default=None)
     args = parser.parse_args()
     if args.command == "history-minutes":
         try:
@@ -49,6 +52,13 @@ def main() -> int:
     if args.command == "history-windows":
         try:
             print(json.dumps(last_n_windows(args.windows, args.lease), indent=2))
+            return 0
+        except ValueError as error:
+            print(json.dumps({"error": str(error)}), file=sys.stderr)
+            return 1
+    if args.command == "history-clipboard":
+        try:
+            print(json.dumps(last_n_clipboard(args.count, args.lease), indent=2))
             return 0
         except ValueError as error:
             print(json.dumps({"error": str(error)}), file=sys.stderr)

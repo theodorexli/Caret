@@ -1,12 +1,14 @@
 # Active Context
 
 ## Current Task: caret-screenpipe-history
-**Phase:** BUILD - IN-PROGRESS
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
-- Level 3 plan written: pin clipboard flag, newest-first last-N, `history-clipboard`, Swift supervisor using `CaretProjectRoot` + attach-if-healthy.
-- Operator: do not wait for plan approval; Preflight/QA only Gemini 3.8 Flash or Cursor Grok High Fast. Gemini 3.8 Flash is unavailable — Preflight and QA use Cursor Grok High Fast.
-- Feature branch: `feat/caret-screenpipe-history`
+- Operator asked for super-abridged TDD (happy paths only).
+- Pin launch now stores clipboard and listens on 3031 (`--disable-audio` so spawn is not blocked by mic TCC).
+- `last_n_minutes` / `last_n_windows` are newest-first; `last_n_clipboard` + `history-clipboard` added.
+- `ScreenpipeSupervisor` starts off the main thread, writes `.local/screenpipe-lease.json`, stops on terminate.
+- Python: 16 tests OK. `swift build --package-path apps/mac` OK. `xcodebuild test` blocked here by an unsigned Xcode license.
 
 ## Next Step
-- Preflight via subagent (`cursor-grok-4.6-xhigh-fast`), then Build without waiting.
+- QA via Cursor Grok High Fast, then reflect, archive, and open a PR.

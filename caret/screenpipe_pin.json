@@ -3,7 +3,7 @@
   "package": "screenpipe",
   "version": "0.4.50",
   "obtain": "npx -y screenpipe@0.4.50",
-  "launch": ["npx", "-y", "screenpipe@0.4.50", "record", "--disable-telemetry", "--pii-backend", "local", "--audio-transcription-engine", "parakeet"],
+  "launch": ["npx", "-y", "screenpipe@0.4.50", "record", "--disable-telemetry", "--pii-backend", "local", "--audio-transcription-engine", "parakeet", "--disable-audio", "--disable-clipboard-capture", "false", "--port", "3031"],
   "expected_health_version": "0.4.50",
   "source": "Published npm CLI. Not packages/screenpipe. Do not advance the 892199f git pin or copy ee/.",
   "lease_fields": [

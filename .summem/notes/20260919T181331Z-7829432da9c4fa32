@@ -1,0 +1,1 @@
+On main 3db8f16 Caret last-N is minutes/windows via a lease; Caret.app does not spawn Screenpipe. Clipboard is a Screenpipe input UiEventType, off unless --disable-clipboard-capture false.

@@ -139,7 +139,7 @@ def last_n_minutes(minutes: int, lease_path: Path | None = None) -> dict:
     _require_health(lease)
     start = (datetime.now().astimezone() - timedelta(minutes=minutes)).isoformat(timespec="seconds")
     payload = _api(lease, "/search", {"limit": 200, "content_type": "all", "start_time": start, "order": "descending"})
-    items = list(reversed(payload.get("data") or []))
+    items = payload.get("data") or []
     records = [_record(lease, item) for item in items]
     if not records:
         raise ValueError("no screenpipe history in the requested minutes")
@@ -165,5 +165,33 @@ def last_n_windows(count: int, lease_path: Path | None = None) -> dict:
             break
     if len(seen) < count:
         raise ValueError("not enough distinct screenpipe windows")
-    seen.reverse()
     return {"kind": "windows", "n": count, "records": [_record(lease, item) for item in seen]}
+
+
+def last_n_clipboard(count: int, lease_path: Path | None = None) -> dict:
+    if count < 1:
+        raise ValueError("count must be >= 1")
+    lease = load_lease(lease_path)
+    _require_health(lease)
+    payload = _api(lease, "/search", {"limit": 200, "content_type": "input", "order": "descending"})
+    records = []
+    for item in payload.get("data") or []:
+        content = item.get("content") or {}
+        if content.get("event_type") != "clipboard":
+            continue
+        records.append(
+            {
+                "timestamp": content.get("timestamp"),
+                "app": content.get("app_name") or "",
+                "title": content.get("window_title") or "",
+                "text_source": "clipboard",
+                "structure_source": None,
+                "structure": None,
+                "text": content.get("text_content") or "",
+            }
+        )
+        if len(records) == count:
+            break
+    if len(records) < count:
+        raise ValueError("no screenpipe clipboard history")
+    return {"kind": "clipboard", "n": count, "records": records}

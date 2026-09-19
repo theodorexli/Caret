@@ -47,3 +47,15 @@ Caret.app launches and supervises pinned Screenpipe 0.4.50 with clipboard histor
 * Decisions made
     - Operator said do not wait after preflight; build proceeds
     - `history-clipboard` gets `--lease`; supervisor uses `CaretPaths.projectRoot`
+    - Super-abridged TDD: happy paths only
+
+## 2026-09-19 - BUILD - COMPLETE
+
+* Work completed
+    - Pin, last-N newest-first, clipboard query, Swift supervisor, README line
+    - Python suite 16 OK; Swift package build OK
+* Decisions made
+    - Always spawn on 3031; leave launchd :3030 alone
+    - `--disable-audio` on the pin so Caret’s child can start without mic TCC
+* Insights
+    - This environment cannot run `xcodebuild test` (Xcode license). Supervisor happy-path is compiled via `swift build`.

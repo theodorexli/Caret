@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from caret.screenpipe import last_n_minutes, last_n_windows, load_pin
+from caret.screenpipe import last_n_clipboard, last_n_minutes, last_n_windows, load_pin
 
 
 def _lease(directory: str) -> Path:
@@ -57,6 +57,17 @@ class ScreenpipeHistoryTests(unittest.TestCase):
                         {
                             "type": "OCR",
                             "content": {
+                                "frame_id": 2,
+                                "timestamp": "2026-09-19T12:01:00-05:00",
+                                "app_name": "Cursor",
+                                "window_name": "newer",
+                                "text": "hi",
+                                "text_source": "accessibility",
+                            },
+                        },
+                        {
+                            "type": "OCR",
+                            "content": {
                                 "frame_id": 1,
                                 "timestamp": "2026-09-19T12:00:00-05:00",
                                 "app_name": "Cursor",
@@ -64,15 +75,95 @@ class ScreenpipeHistoryTests(unittest.TestCase):
                                 "text": "hello",
                                 "text_source": "accessibility",
                             },
-                        }
+                        },
                     ]
                 }
 
             with patch("caret.screenpipe._api", side_effect=fake_api):
                 result = last_n_minutes(3, lease)
             self.assertEqual(result["kind"], "minutes")
-            self.assertEqual(result["records"][0]["title"], "hackathon")
+            self.assertEqual([row["title"] for row in result["records"]], ["newer", "hackathon"])
             self.assertEqual(result["records"][0]["structure"][0]["label"], "button")
+
+    def test_windows_are_newest_active_first(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lease = _lease(directory)
+
+            def fake_api(_lease, path, params=None):
+                if path == "/health":
+                    return {"status": "healthy", "version": "0.4.50"}
+                if path.endswith("/elements"):
+                    return {"data": []}
+                return {
+                    "data": [
+                        {
+                            "type": "OCR",
+                            "content": {
+                                "app_name": "Safari",
+                                "window_name": "Inbox",
+                                "text": "a",
+                                "timestamp": "2026-09-19T12:02:00-05:00",
+                            },
+                        },
+                        {
+                            "type": "OCR",
+                            "content": {
+                                "app_name": "Cursor",
+                                "window_name": "hackathon",
+                                "text": "b",
+                                "timestamp": "2026-09-19T12:01:00-05:00",
+                            },
+                        },
+                    ]
+                }
+
+            with patch("caret.screenpipe._api", side_effect=fake_api):
+                result = last_n_windows(2, lease)
+            self.assertEqual(
+                [(row["app"], row["title"]) for row in result["records"]],
+                [("Safari", "Inbox"), ("Cursor", "hackathon")],
+            )
+
+    def test_clipboard_returns_newest_first(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lease = _lease(directory)
+
+            def fake_api(_lease, path, params=None):
+                if path == "/health":
+                    return {"status": "healthy", "version": "0.4.50"}
+                return {
+                    "data": [
+                        {
+                            "type": "Input",
+                            "content": {
+                                "event_type": "clipboard",
+                                "timestamp": "2026-09-19T12:02:00-05:00",
+                                "app_name": "Safari",
+                                "window_title": "Inbox",
+                                "text_content": "newer copy",
+                            },
+                        },
+                        {
+                            "type": "Input",
+                            "content": {"event_type": "click", "text_content": "ignored"},
+                        },
+                        {
+                            "type": "Input",
+                            "content": {
+                                "event_type": "clipboard",
+                                "timestamp": "2026-09-19T12:01:00-05:00",
+                                "app_name": "Cursor",
+                                "window_title": "hackathon",
+                                "text_content": "older copy",
+                            },
+                        },
+                    ]
+                }
+
+            with patch("caret.screenpipe._api", side_effect=fake_api):
+                result = last_n_clipboard(2, lease)
+            self.assertEqual(result["kind"], "clipboard")
+            self.assertEqual([row["text"] for row in result["records"]], ["newer copy", "older copy"])
 
     def test_wrong_version_is_hard_fail(self):
         with tempfile.TemporaryDirectory() as directory:

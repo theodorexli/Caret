@@ -11,6 +11,10 @@ class ScreenpipePinTests(unittest.TestCase):
         self.assertIn("npx", pin["obtain"])
         self.assertEqual(pin["launch"][0], "npx")
         self.assertIn("screenpipe@0.4.50", pin["launch"])
+        self.assertIn("--disable-clipboard-capture", pin["launch"])
+        self.assertIn("false", pin["launch"])
+        self.assertIn("--port", pin["launch"])
+        self.assertIn("3031", pin["launch"])
         self.assertEqual(
             pin["lease_fields"],
             ["artifact_id", "checksum", "expected_version", "endpoint", "pid", "ready_at"],
