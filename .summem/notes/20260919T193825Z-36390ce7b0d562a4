@@ -1,0 +1,1 @@
+Caret last-N sends Bearer plus X-Screenpipe-Client: api; token from SCREENPIPE_LOCAL_API_KEY, SCREENPIPE_API_KEY, or pinned screenpipe auth token.

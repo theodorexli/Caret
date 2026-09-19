@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -64,13 +65,65 @@ def load_lease(path: Path | None = None) -> dict:
     return lease
 
 
+_discovered_token: str | None = None
+
+
+def _discover_token() -> str:
+    """Return the local API token from the pinned ``screenpipe auth token`` CLI."""
+    global _discovered_token
+    if _discovered_token:
+        return _discovered_token
+    pin = load_pin()
+    package = pin.get("package", "screenpipe")
+    version = pin["version"]
+    env = os.environ.copy()
+    env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + env.get("PATH", "")
+    try:
+        completed = subprocess.run(
+            ["npx", "-y", "--package", f"{package}@{version}", "screenpipe", "auth", "token"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ValueError("screenpipe API token unavailable") from error
+    token = (completed.stdout or "").strip()
+    if completed.returncode != 0 or not token:
+        raise ValueError("screenpipe API token unavailable")
+    _discovered_token = token
+    return token
+
+
+def _local_api_token() -> str:
+    """Return the pinned Screenpipe local API bearer token.
+
+    Screenpipe 0.4.50 has no localhost bypass: protected endpoints such as
+    ``/search`` return HTTP 403 unless the request carries this token.
+    ``/health`` stays unauthenticated.
+    """
+    for name in ("SCREENPIPE_LOCAL_API_KEY", "SCREENPIPE_API_KEY"):
+        value = (os.environ.get(name) or "").strip()
+        if value:
+            return value
+    token = _discover_token()
+    if not token:
+        raise ValueError("screenpipe API token unavailable")
+    return token
+
+
+def _api_headers() -> dict[str, str]:
+    """Return headers required by Screenpipe 0.4.50 protected HTTP calls."""
+    return {
+        "Authorization": f"Bearer {_local_api_token()}",
+        "X-Screenpipe-Client": "api",
+    }
+
+
 def _api(lease: dict, path: str, params: dict | None = None) -> dict:
     query = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v is not None})
     url = lease["endpoint"].rstrip("/") + path + (f"?{query}" if query else "")
-    headers = {}
-    token = os.environ.get("SCREENPIPE_API_KEY")
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
+    headers = _api_headers()
     request = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
