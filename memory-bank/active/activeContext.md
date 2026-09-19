@@ -4,8 +4,8 @@
 **Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Preflight 1 failed as fixable: picker had no accept path and no legal Mac `ContextFrame`.
-- Replanned: `workflow.prepare` + `explicitActionFrame` + existing `offer.accept`. `gh` still searches; Jev still writes.
+- Preflight 2 failed as fixable on panel hide, ambient router race, default registry, `failed` events, and clipboard-only accept.
+- Replanned: request-reply `workflow.prepare`, `install_offer`, built-in `build_registry`, keep panel open, pid/bundle accept.
 
 ## Next Step
-- Re-run preflight, then `/niko-build` if it passes.
+- Re-run preflight. Do not build until it passes.
