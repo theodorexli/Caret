@@ -1,0 +1,7 @@
+PASS
+
+Level 2 caret-screenpipe-detached-launch. Implementation is acceptable as-is.
+
+Pin launch is the published CLI, not npx. Supervisor resolves the Developer ID Mach-O, writes a Caret-owned launchd plist, bootstraps only when the pin port is free, adopts with lease pid 0, and bootouts only when ownsJob. Docs no longer say Caret spawns npx as a child. Live Build check: /health 0.4.50, parent launchd, Screen Recording recovered.
+
+Advisories (do not block): Accessibility still needs a user grant on that Mach-O; resolve still uses a short-lived /usr/bin/env npx which (recorder argv does not); runCommand maps helper failures to notHealthy; loadPin rejection and stop-after-spawn are covered by code plus split tests, not one dedicated case each.

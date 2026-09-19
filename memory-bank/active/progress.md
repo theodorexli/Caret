@@ -46,3 +46,24 @@ Change Caret’s Screenpipe start so it execs the pinned `screenpipe` binary and
     - Do not exec `obtain`
 * Insights
     - Detached launch got `screen recording: ok` and frames. Accessibility is still a grant on that Mach-O, not a Caret-child TCC bug
+
+## 2026-09-19 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote `memory-bank/active/reflection/reflection-caret-screenpipe-detached-launch.md`
+    - Reconciled persistent files (already updated in Build)
+* Decisions made
+    - None new
+* Insights
+    - npm `which` is the node shim; the Mach-O is the optional-dependency binary
+
+## 2026-09-19 - QA - COMPLETE (PASS)
+
+* Work completed
+    - Semantic review of pin argv, launchd supervisor, docs, and live-check notes against the Level 2 plan
+    - Wrote `memory-bank/active/.qa-validation-status`
+* Decisions made
+    - PASS with advisories; no Build rerun
+    - Remaining Accessibility false is an operator grant on the Developer ID binary, not a plan or implementation defect
+* Insights
+    - `npx which` resolving to a node shim was the real TCC fork; walking to `@screenpipe/cli-darwin-arm64/bin/screenpipe` is what made the live parent/perm check succeed
