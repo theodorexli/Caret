@@ -74,3 +74,15 @@ Make Caret launch a pinned Screenpipe version, expose last-N history through a C
     - All checks passed: prerequisites, checklist shape, coverage, scope, order (DAG agrees with checklist), invariants with handoff rules for pin and lease, per-milestone Done/Risks
 * Insights
     - Advisory: a versioned, machine-checked lease contract in M1 would make the M2||M3 parallelism enforceable instead of prose-governed
+
+## 2026-09-19 - BUILD - IN-PROGRESS
+
+* Work completed
+    - Created branch `feat/caret-pinned-screenpipe`
+    - Shipped pin + last-N CLI (milestones 1 and 2)
+    - 11 unittest tests passing
+* Decisions made
+    - Pin is `npx screenpipe@0.4.50`, not `packages/screenpipe`
+    - Lease path defaults to `.local/screenpipe-lease.json`; token from `SCREENPIPE_API_KEY`
+* Insights
+    - L4 has no single build phase; this build is the first two milestones on a feature branch

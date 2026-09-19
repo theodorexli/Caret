@@ -1,0 +1,17 @@
+{
+  "artifact_id": "screenpipe-npm-0.4.50",
+  "package": "screenpipe",
+  "version": "0.4.50",
+  "obtain": "npx -y screenpipe@0.4.50",
+  "launch": ["npx", "-y", "screenpipe@0.4.50", "record", "--disable-telemetry", "--pii-backend", "local", "--audio-transcription-engine", "parakeet"],
+  "expected_health_version": "0.4.50",
+  "source": "Published npm CLI. Not packages/screenpipe. Do not advance the 892199f git pin or copy ee/.",
+  "lease_fields": [
+    "artifact_id",
+    "checksum",
+    "expected_version",
+    "endpoint",
+    "pid",
+    "ready_at"
+  ]
+}

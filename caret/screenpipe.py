@@ -1,0 +1,169 @@
+"""Pinned Screenpipe artifact, launcher lease, and last-N history."""
+
+from __future__ import annotations
+
+import json
+import os
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime, timedelta
+from pathlib import Path
+
+PIN_PATH = Path(__file__).with_name("screenpipe_pin.json")
+DEFAULT_LEASE_PATH = Path(".local/screenpipe-lease.json")
+
+# AppKit NSAccessibility.Role.description(with:) plus Screenpipe OCR "block".
+ROLE_LABELS = {
+    "AXButton": "button",
+    "AXRadioButton": "radio button",
+    "AXCheckBox": "checkbox",
+    "AXPopUpButton": "pop up button",
+    "AXStaticText": "text",
+    "AXTextArea": "text entry area",
+    "AXTextField": "text field",
+    "AXHeading": "heading",
+    "block": "text block",
+}
+
+
+def load_pin() -> dict:
+    pin = json.loads(PIN_PATH.read_text())
+    required = (
+        "artifact_id",
+        "version",
+        "obtain",
+        "launch",
+        "expected_health_version",
+        "lease_fields",
+    )
+    missing = [key for key in required if key not in pin]
+    if missing:
+        raise ValueError(f"screenpipe pin missing {missing}")
+    if pin["version"] != pin["expected_health_version"]:
+        raise ValueError("pin version must match expected_health_version")
+    launch_text = " ".join(pin["launch"]) + pin["obtain"]
+    if "packages/screenpipe" in launch_text:
+        raise ValueError("pin must not launch the git source tree")
+    return pin
+
+
+def load_lease(path: Path | None = None) -> dict:
+    pin = load_pin()
+    lease_path = path or DEFAULT_LEASE_PATH
+    if not lease_path.is_file():
+        raise ValueError(f"screenpipe lease missing: {lease_path}")
+    lease = json.loads(lease_path.read_text())
+    missing = [key for key in pin["lease_fields"] if key not in lease]
+    if missing:
+        raise ValueError(f"screenpipe lease missing {missing}")
+    if lease["expected_version"] != pin["expected_health_version"]:
+        raise ValueError("screenpipe lease version is not the pin")
+    if lease["artifact_id"] != pin["artifact_id"]:
+        raise ValueError("screenpipe lease artifact is not the pin")
+    return lease
+
+
+def _api(lease: dict, path: str, params: dict | None = None) -> dict:
+    query = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v is not None})
+    url = lease["endpoint"].rstrip("/") + path + (f"?{query}" if query else "")
+    headers = {}
+    token = os.environ.get("SCREENPIPE_API_KEY")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            return json.load(response)
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
+        raise ValueError(f"screenpipe unreachable: {error}") from error
+
+
+def _label(role: str) -> str:
+    if role in ROLE_LABELS:
+        return ROLE_LABELS[role]
+    return role[2:].lower() if role.startswith("AX") else (role or "unknown")
+
+
+def _structure(lease: dict, frame_id) -> tuple[list[dict] | None, str | None]:
+    if frame_id is None:
+        return None, None
+    try:
+        payload = _api(lease, f"/frames/{frame_id}/elements", {"source": "accessibility"})
+    except ValueError:
+        return None, None
+    rows = payload.get("data") or []
+    if not rows:
+        return None, None
+    structure = []
+    for item in rows[:80]:
+        structure.append(
+            {
+                "role": item.get("role"),
+                "label": _label(item.get("role") or ""),
+                "text": item.get("text") or "",
+                "depth": item.get("depth"),
+            }
+        )
+    return structure, "accessibility"
+
+
+def _record(lease: dict, item: dict) -> dict:
+    content = item.get("content") or {}
+    frame_id = content.get("frame_id") or content.get("id")
+    structure, source = _structure(lease, frame_id)
+    return {
+        "timestamp": content.get("timestamp"),
+        "app": content.get("app_name") or "",
+        "title": content.get("window_name") or "",
+        "text_source": content.get("text_source") or item.get("type"),
+        "structure_source": source,
+        "structure": structure,
+        "text": content.get("text") or "",
+    }
+
+
+def _require_health(lease: dict) -> None:
+    health = _api(lease, "/health")
+    version = health.get("version")
+    if version != lease["expected_version"]:
+        raise ValueError(f"screenpipe version {version!r} is not the pin")
+    if health.get("status") not in {"healthy", "ok"}:
+        raise ValueError("screenpipe is not healthy")
+
+
+def last_n_minutes(minutes: int, lease_path: Path | None = None) -> dict:
+    if minutes < 1:
+        raise ValueError("minutes must be >= 1")
+    lease = load_lease(lease_path)
+    _require_health(lease)
+    start = (datetime.now().astimezone() - timedelta(minutes=minutes)).isoformat(timespec="seconds")
+    payload = _api(lease, "/search", {"limit": 200, "content_type": "all", "start_time": start, "order": "descending"})
+    items = list(reversed(payload.get("data") or []))
+    records = [_record(lease, item) for item in items]
+    if not records:
+        raise ValueError("no screenpipe history in the requested minutes")
+    return {"kind": "minutes", "n": minutes, "records": records}
+
+
+def last_n_windows(count: int, lease_path: Path | None = None) -> dict:
+    if count < 1:
+        raise ValueError("windows must be >= 1")
+    lease = load_lease(lease_path)
+    _require_health(lease)
+    payload = _api(lease, "/search", {"limit": 200, "content_type": "all", "order": "descending"})
+    seen = []
+    keys = set()
+    for item in payload.get("data") or []:
+        content = item.get("content") or {}
+        key = ((content.get("app_name") or "").strip(), (content.get("window_name") or "").strip())
+        if not any(key) or key in keys:
+            continue
+        keys.add(key)
+        seen.append(item)
+        if len(seen) == count:
+            break
+    if len(seen) < count:
+        raise ValueError("not enough distinct screenpipe windows")
+    seen.reverse()
+    return {"kind": "windows", "n": count, "records": [_record(lease, item) for item in seen]}

@@ -1,15 +1,17 @@
 # Active Context
 
 ## Current Task: caret-pinned-screenpipe
-**Phase:** PREFLIGHT - COMPLETE (PASS WITH ADVISORY)
+**Phase:** BUILD - IN-PROGRESS (M1+M2 on feat/caret-pinned-screenpipe)
 
 ## What Was Done
-- Operator overrode: Caret launches and supervises the pinned Screenpipe.
-- Creative updated; “do not spawn” revoked.
-- Milestone list replanned: lease is an invariant; M1 defines lease fields; M3 writes the live lease; M2 consumes it only.
+- Branched `feat/caret-pinned-screenpipe`
+- M1: `caret/screenpipe_pin.json` pins npm `screenpipe@0.4.50` and lease fields
+- M2: `python3 -m caret history-minutes` / `history-windows` read a lease and hard-fail on miss
+- Files: `/Users/tex/github/hackathon-2026-09-19/caret/screenpipe_pin.json`, `caret/screenpipe.py`, `caret/__main__.py`, `tests/test_screenpipe_pin.py`, `tests/test_screenpipe_history.py`
 
 ## Next Step
-- Operator reviews the plan, then `/niko` to start milestone 1.
+- Milestone 3: Caret.app launches and writes the live lease
 
 ## Decisions
-- 2026-09-19: move fast and GSD, happy-path focus. No polish. Bias preflight toward shipping.
+- 2026-09-19: move fast and GSD, happy-path focus. No polish.
+- Runtime pin is the published CLI 0.4.50, not the MIT git tree.
