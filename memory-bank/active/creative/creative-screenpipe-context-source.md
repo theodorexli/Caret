@@ -15,7 +15,7 @@ Quality attributes, ranked for this event:
 
 1. Fitness — the facade exists and returns the dump shape we already proved locally.
 2. Honesty with TCC and license — do not claim Caret’s Accessibility covers their binary; do not ship current Screenpipe under the MIT pin story.
-3. Simplicity — ship this weekend; Caret stays two processes and no daemon of our own.
+3. Simplicity — pin one Screenpipe build, launch it from Caret, do not vendor their engine or stand up a second capture stack.
 4. Maintainability — a teammate can debug “is Screenpipe up?” without a Rust embed.
 5. Local privacy — capture stays on the machine; Caret only reads what the gatherer already stored.
 6. Scale — not a factor. One laptop, one demo.
@@ -43,16 +43,19 @@ flowchart LR
   Popup["Mac popup"]:::ui --> CLI["python3 -m caret"]:::core
   CLI --> Facade["last N minutes / last N windows"]:::core
   Facade --> Client["Screenpipe client"]:::core
-  Client -->|"localhost, optional override"| SP["Screenpipe recorder"]:::gather
+  Popup --> Launch["Caret launches pinned Screenpipe"]:::ui
+  Launch --> SP["Pinned Screenpipe process"]:::gather
+  Client -->|"lease: endpoint, version, pid"| SP
   AX["Caret Accessibility: current thread"]:::ui -.->|"not this decision"| CLI
 ```
 
-- **Caret facade** — owns the request shape and the Apple role labels. Single responsibility: history for the rest of Caret.
-- **Screenpipe client** — health check, auth header, `/search` + `/frames/{id}/elements`. Knows the sidecar. Callers do not.
-- **Screenpipe recorder** — someone else’s process. Capture, SQLite, TCC for *that* binary.
-- **Caret Accessibility** — already shipped. Frontmost thread and selection. Not the gatherer.
+- **Caret launcher** — starts, waits for health, and supervises the pinned Screenpipe. Owns the runtime lease (version, checksum, endpoint, PID).
+- **Caret facade** — last N minutes / last N windows. Callers never see Screenpipe.
+- **Screenpipe client** — talks only to the leased process. Wrong version or dead PID is a hard fail.
+- **Pinned Screenpipe** — their binary, their TCC. Caret’s Accessibility does not cover it.
+- **Caret Accessibility** — frontmost thread and selection. Not the gatherer.
 
-Communication is request/response over loopback HTTP. No shared database. No Caret-owned capture daemon.
+Communication is request/response over loopback HTTP to the process Caret launched. No shared database. Caret does not embed their engine.
 
 ## Options Evaluated
 
@@ -86,18 +89,21 @@ Key insights:
 - A later teammate vendors current Screenpipe because the sidecar feels incomplete: checked. The pin note and this decision say the facade stays; the gatherer can be replaced later, the current engine must not be copied in.
 - Callers use last-N history when they needed the focused Gmail thread: checked. Integrations already say current thread is Accessibility. This facade is “what they’ve been up to,” not “what is focused.”
 
-**Selected**: Sidecar gatherer, Caret-owned facade. Default loopback Screenpipe. Optional endpoint override. Do not bundle the engine for this event.
+**Selected (override 2026-09-19):** Caret launches and supervises a pinned Screenpipe version. Caret-owned facade for last-N. Do not vendor the engine. Do not depend on a user-started sidecar.
 
-**Rationale**: Fitness is already proven against a running sidecar. Honesty and simplicity both rank above “user never hears Screenpipe.” Bundle fails license or TCC unless we take on a daemon we will not finish this weekend. The MIT-pin helper is the only honest bundle, and it is the wrong size for the starter.
+This overrides the earlier “user-run sidecar, do not spawn” line. Operator direction: launch and supervise.
 
-**Tradeoff**: A Caret run that needs “what the user has been up to” cannot succeed without a live Screenpipe and enough captured history. Caret will not start Screenpipe and will not inherit its permissions. Soft-empty last-N is not a valid outcome for that run.
+**Rationale**: The approved brief is launch-and-depend. A random Screenpipe on the machine is not a pin. Bundling their current engine is still a license problem. Supervising *their* pinned binary is the path that makes the version a Caret dependency without copying source.
+
+**Tradeoff**: Caret now owns process lifecycle. The launched binary still needs its own Accessibility and Screen Recording. Down, wrong version, or empty last-N is a hard fail. Soft-empty last-N is not a valid outcome.
 
 ## Implementation Notes
 
 - Put `last_n_minutes(n)` and `last_n_windows(n)` on the Python CLI. Return the scratch dump shape: title, app, timestamp, structure with `role` plus AppKit `label`, or visible text.
-- Client defaults: `http://127.0.0.1:3030`, token from `SCREENPIPE_API_KEY` or `screenpipe auth token`. Optional Caret setting overrides the base URL only when the default is wrong.
-- If health fails, auth fails, or last-N has no usable records for the requested window, fail the Caret run. Structured error, non-zero CLI, no inference. Never invent windows. Never proceed on empty context.
-- Do not spawn Screenpipe from Caret. Do not open their TCC panes as if they were ours.
+- Caret starts the pinned binary (or confirms that exact pin is already the one it launched), waits for health, writes a lease: artifact id, checksum, expected version, endpoint, PID, ready time.
+- The Python client consumes that lease. It does not rediscover an arbitrary recorder on port 3030.
+- If health fails, version mismatches, auth fails, or last-N has no usable records, fail the Caret run. Structured error, non-zero CLI, no inference. Never invent windows.
+- Do not open Screenpipe’s TCC panes as if they were Caret’s. Tell the user to grant the launched binary.
 - Keep Caret Accessibility for “now.” Do not route thread identification through this facade.
 - Do not change the Screenpipe submodule pin. Do not copy `ee/`.
 - If a later licensed or MIT-pin helper is approved, it sits behind the same two functions. Callers do not change.

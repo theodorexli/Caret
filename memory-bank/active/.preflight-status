@@ -1,0 +1,4 @@
+FAIL (blocking)
+
+1. Blocking — The selected architecture decision says the recorder is a user-run sidecar and explicitly says “Caret will not start Screenpipe” and “Do not spawn Screenpipe from Caret.” Milestone 3 instead makes Caret.app launch and supervise that process. These are mutually exclusive process-ownership, permission, and distribution models, so the milestone list cannot be built while honoring the approved decision.
+2. Advisory — Once the operator resolves process ownership, define a small runtime lease manifest owned by the launcher: artifact identifier and checksum, expected reported version, endpoint, PID, and readiness timestamp. The Python facade should consume a validated lease rather than independently rediscovering a recorder; this makes a stale or wrong-version process a deterministic structured failure.

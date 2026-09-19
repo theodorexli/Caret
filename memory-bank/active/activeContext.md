@@ -4,9 +4,9 @@
 **Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Intent restated and approved: Caret launches a pinned Screenpipe version and hard-fails without usable last-N history.
-- Complexity set to Level 4.
-- Milestone list written: pin artifact, Python last-N client, Caret launch/supervise, docs.
+- Operator overrode: Caret launches and supervises the pinned Screenpipe.
+- Creative updated; “do not spawn” revoked.
+- Milestone list replanned: lease is an invariant; M1 defines lease fields; M3 writes the live lease; M2 consumes it only.
 
 ## Next Step
-- Preflight to validate the milestone list.
+- Preflight to validate the replanned milestone list.
