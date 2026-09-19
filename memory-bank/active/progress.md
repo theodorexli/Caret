@@ -68,6 +68,20 @@ Add a Caret skill that pauses the current app, understands a complaint, finds th
 * Work completed
     - Replanned units 3–5 around request-reply, built-in load, panel stay, and no-field accept
 
+## 2026-09-19 - PREFLIGHT - FAIL (fixable)
+
+* Work completed
+    - Preflight 3: host app is lost when the picker opens; `failSkillPreview` is invisible on the browse panel
+* Decisions made
+    - Freeze `HostContext` in `showPanel` before Caret is frontmost
+    - Show not-OSS with `CaretActionStatusRow` on the browse panel
+    - `install_offer` clears `_pending`; Mac replaces `actionOffers` with the reply
+
+## 2026-09-19 - PLAN - COMPLETE
+
+* Work completed
+    - Replanned unit 5 around `HostContext` and the browse-panel status row
+
 ## 2026-09-19 - PREFLIGHT - COMPLETE (FAIL (fixable))
 
 * Work completed
@@ -93,3 +107,16 @@ Add a Caret skill that pauses the current app, understands a complaint, finds th
     - `adapters()` is not loaded by the default Mac bridge; only `build_registry` plus `--adapter` from `dev.json` populate the registry
     - `submit` does not take the in-flight slot; the worker will judge a frame left pending during `gh` search
     - A `failed` event is treated as a completion-backend outage, not a skill outcome
+
+## 2026-09-19 - PREFLIGHT - COMPLETE (FAIL (fixable))
+
+* Work completed
+    - Re-validated the request-reply + install_offer + keep-panel replan against FocusedTargetCapture, SelectionMonitor, SkillPickerView, GatewayActionPanel, and Router.accept
+    - Wrote `memory-bank/active/.preflight-status` with first line `FAIL (fixable)`
+* Decisions made
+    - Did not edit the implementation plan (no TDD swap or change-detector strike)
+    - Host-app snapshot at showPanel, and a browse-panel CaretActionStatusRow for not-OSS, must be added to the plan before build
+* Insights
+    - The previous five blockers are named in the plan; the remaining holes are Caret-as-frontmost after the picker steals focus, and failSkillPreview rendering only inside GatewayActionPanel
+    - SelectionMonitor clears lastTarget once Caret is frontmost, so allowingCaretPanelForPID cannot recover a host PID that was never saved
+    - customActions from `caret/skills/<id>/` is the picker identity path for machines that already have Application Support notes

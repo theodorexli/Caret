@@ -4,8 +4,8 @@
 **Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Preflight 2 failed as fixable on panel hide, ambient router race, default registry, `failed` events, and clipboard-only accept.
-- Replanned: request-reply `workflow.prepare`, `install_offer`, built-in `build_registry`, keep panel open, pid/bundle accept.
+- Preflight 3 failed as fixable: picker makes Caret frontmost, and `failSkillPreview` is gateway-only.
+- Replanned: `HostContext` frozen at `showPanel`; not-OSS uses `CaretActionStatusRow` on the browse panel.
 
 ## Next Step
 - Re-run preflight. Do not build until it passes.
