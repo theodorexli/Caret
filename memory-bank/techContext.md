@@ -23,6 +23,7 @@ Native Mac UI in Swift, local workflow core in Python 3.11+ with stdlib only, ru
 - Full Mac gate: `make check` (tests + pin check + `swift build`). CI splits this: Linux runs tests, the pin check, and a fixture preview; macOS builds the Swift package (`.github/workflows/ci.yml`).
 - Mac CI SDK: the Mac job runs on `macos-26` because Tahoe APIs such as `glassEffect` need the Xcode 26 SDK. `macos-15` defaults to Xcode 16.4 and will not compile those symbols. `#available(macOS 26.0, *)` is a **runtime** check — the compiler still type-checks both branches against the current SDK. New Apple APIs need a compile-time gate (`#if compiler(>=6.2)` or equivalent) **and** an SDK that has the symbol. Do not move the Mac job back to default Xcode 16.
 - GitHub Actions repository secret `SUPABASE_HACKATHON_TOKEN` is available for CI jobs that need Supabase (`gh secret list`). Workflows that need it should use `${{ secrets.SUPABASE_HACKATHON_TOKEN }}`. Do not write the value into the repo, plaintext workflow files, or memory-bank.
+- Chat completions use Vercel AI Gateway (`caret/completions.py`, default model `google/gemini-2.5-flash`). Set `VERCEL_API_GATEWAY_KEY` locally or `${{ secrets.VERCEL_API_GATEWAY_KEY }}` in CI. Optional alias: `AI_GATEWAY_API_KEY`. CLI smoke: `python3 -m caret complete --prompt "Hello"`.
 - No current check uses live Gmail, calendar, or browser accounts, or sends messages. A green run does not prove those integrations.
 
 ## Design System

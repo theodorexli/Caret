@@ -22,15 +22,20 @@ final class Model: ObservableObject {
     @Published var scopedActionID: String?
     @Published private(set) var skillsVersion = 0
     @Published private(set) var customActions: [CaretAction] = []
-    @Published var showingSettings = false
-
+    @Published private(set) var storedMemories: [StoredMemory] = []
     var memories: [MemoryItem] = []
     var onRun: ((CaretAction) -> Void)?
     var onPinsChanged: (() -> Void)?
     var onOpenAccessibility: (() -> Void)?
     var onReconnectAccessibility: (() -> Void)?
+    var onOpenSettingsWindow: (() -> Void)?
 
     let skillRepository = SkillRepository()
+    let memoryRepository = MemoryRepository()
+    let noteRepository = NoteRepository()
+
+    @Published private(set) var skillNotes: [CaretNote] = []
+    @Published private(set) var memoryNotes: [CaretNote] = []
 
     let actions: [CaretAction] = [
         CaretAction(id: "book-flight", title: "Book flight"),
@@ -46,6 +51,47 @@ final class Model: ObservableObject {
     init(pinStore: PinnedActionsStore = .load()) {
         self.pinStore = pinStore
         reloadCustomActions()
+        reloadNotes()
+    }
+
+    func reloadNotes() {
+        skillNotes = noteRepository.listSkillNotes()
+        memoryNotes = noteRepository.listMemoryNotes()
+        storedMemories = memoryRepository.load()
+        memories = noteRepository.memoryContextItems()
+        if memories.isEmpty {
+            memories = storedMemories.map { MemoryItem(id: $0.id, text: $0.text, sourceApp: $0.sourceApp) }
+        }
+    }
+
+    func reloadMemories() {
+        reloadNotes()
+    }
+
+    func addMemory(text: String) {
+        do {
+            _ = try memoryRepository.add(text: text)
+            reloadMemories()
+        } catch {
+            NSLog("[Caret] add memory failed: %@", String(describing: error))
+        }
+    }
+
+    func deleteMemory(id: String) {
+        do {
+            try memoryRepository.delete(id: id)
+            reloadMemories()
+        } catch {
+            NSLog("[Caret] delete memory failed: %@", String(describing: error))
+        }
+    }
+
+    var skillGroups: [(action: CaretAction, skills: [CaretSkill])] {
+        allActions.compactMap { action in
+            let skills = skillRepository.list(actionID: action.id)
+            guard !skills.isEmpty else { return nil }
+            return (action, skills)
+        }
     }
 
     var allActions: [CaretAction] {
@@ -76,7 +122,12 @@ final class Model: ObservableObject {
     var pinnedChips: [PinnedActionChip] {
         pinnedActions.compactMap { action in
             guard let slot = pinStore.slot(for: action.id) else { return nil }
-            return PinnedActionChip(id: action.id, title: action.title, slot: slot)
+            return PinnedActionChip(
+                id: action.id,
+                title: action.title,
+                icon: noteRepository.skillIcon(actionID: action.id),
+                slot: slot
+            )
         }
     }
 
@@ -100,20 +151,17 @@ final class Model: ObservableObject {
 
     func preparePanel(scopedActionID: String?) {
         reloadCustomActions()
-        showingSettings = false
         self.scopedActionID = scopedActionID
         panelQuery = ""
     }
 
     func clearPanelScope() {
         scopedActionID = nil
-        showingSettings = false
         panelQuery = ""
     }
 
     func openSettings() {
-        scopedActionID = nil
-        showingSettings = true
+        onOpenSettingsWindow?()
     }
 
     var settingsMatchesSearch: Bool {
@@ -256,18 +304,7 @@ struct SkillPickerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
-                if model.showingSettings {
-                    Button {
-                        model.showingSettings = false
-                        searchFocused = true
-                    } label: {
-                        Label("Settings", systemImage: "chevron.left")
-                            .labelStyle(.titleAndIcon)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                } else if let action = model.scopedAction {
+                if let action = model.scopedAction {
                     Button {
                         model.clearPanelScope()
                         searchFocused = true
@@ -285,11 +322,10 @@ struct SkillPickerView: View {
                     text: $model.panelQuery,
                     placeholder: searchPlaceholder,
                     isFocused: $searchFocused,
-                    showsSettingsButton: !model.showingSettings,
                     onSettings: { model.openSettings() }
                 )
                 .onSubmit {
-                    if model.settingsMatchesSearch, !model.showingSettings {
+                    if model.settingsMatchesSearch {
                         model.openSettings()
                     } else if model.showCreateRow {
                         model.submitCreateFromQuery()
@@ -304,9 +340,7 @@ struct SkillPickerView: View {
 
             ScrollView(.vertical, showsIndicators: true) {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    if model.showingSettings {
-                        SettingsPanelView(model: model)
-                    } else if model.scopedAction == nil {
+                    if model.scopedAction == nil {
                         if model.settingsMatchesSearch {
                             SkillRow(title: "Settings", subtitle: "Accessibility and Caret", accent: false) {
                                 model.openSettings()
@@ -389,22 +423,6 @@ private struct PanelSearchField: View {
         .padding(.trailing, 4)
         .padding(.vertical, 5)
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-    }
-}
-
-private struct SettingsPanelView: View {
-    @ObservedObject var model: Model
-
-    var body: some View {
-        SkillRow(
-            title: model.accessibilityConnected ? "Accessibility: connected" : "Accessibility: not connected",
-            subtitle: "Open System Settings"
-        ) {
-            model.onOpenAccessibility?()
-        }
-        SkillRow(title: "Reconnect Accessibility", subtitle: "After reinstalling Caret") {
-            model.onReconnectAccessibility?()
-        }
     }
 }
 
@@ -567,9 +585,10 @@ final class CaretPanel: NSPanel {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var panel: CaretPanel?
     private var permissionPanel: NSPanel?
+    private var settingsWindow: NSWindow?
     private var model: Model?
     private var trustTimer: Timer?
     private var lastTarget: SelectionTarget?
@@ -611,6 +630,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onReconnectAccessibility = { [weak self] in
             self?.showPermissionWindow()
         }
+        model.onOpenSettingsWindow = { [weak self] in
+            self?.showSettingsWindow()
+        }
         let hosting = NSHostingView(
             rootView: SkillPickerView(model: model)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -625,6 +647,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         statusBar.onOpen = { [weak self] in
             self?.togglePanel(at: NSEvent.mouseLocation)
+        }
+        statusBar.onSettings = { [weak self] in
+            self?.showSettingsWindow()
         }
         statusBar.onFixAccessibility = { [weak self] in
             self?.showPermissionWindow()
@@ -748,6 +773,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func windowWillClose(_ notification: Notification) {
+        guard (notification.object as? NSWindow) === settingsWindow else { return }
+        NSApp.setActivationPolicy(.accessory)
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         hotKey.unregister()
         monitor.stop()
@@ -779,6 +809,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.monitor.start()
             }
         }
+    }
+
+    func showSettingsWindow() {
+        guard let model else { return }
+        hidePanel()
+
+        if settingsWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 640, height: 480),
+                styleMask: [.titled, .closable, .miniaturizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "Caret Settings"
+            window.isReleasedWhenClosed = false
+            window.delegate = self
+            window.center()
+            settingsWindow = window
+        }
+
+        settingsWindow?.contentView = NSHostingView(rootView: CaretSettingsView(model: model))
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow?.makeKeyAndOrderFront(nil)
     }
 
     func showPermissionWindow() {

@@ -4,7 +4,7 @@ import SwiftUI
 enum CaretPillMetrics {
     static let sparkleSize = NSSize(width: 40, height: 40)
     static let clusterHeight: CGFloat = 40
-    static let pinLabelMaxWidth: CGFloat = 58
+    static let pinIconCellWidth: CGFloat = 36
     static let clusterSpacing: CGFloat = 4
     static let stripCornerRadius: CGFloat = clusterHeight / 2
 }
@@ -12,6 +12,7 @@ enum CaretPillMetrics {
 struct PinnedActionChip: Identifiable, Equatable {
     let id: String
     let title: String
+    let icon: String
     let slot: Int
 }
 
@@ -187,15 +188,21 @@ private struct PinnedStripCell: View {
 
     var body: some View {
         Button(action: action) {
-            Text(showShortcut ? PinnedShortcutFormatting.menuLabel(slot: chip.slot) : chip.title)
-                .font(.system(size: showShortcut ? 11 : 10, weight: .medium, design: showShortcut ? .monospaced : .default))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: showShortcut ? 44 : CaretPillMetrics.pinLabelMaxWidth)
-                .padding(.horizontal, showShortcut ? 6 : 8)
-                .animation(.easeOut(duration: 0.12), value: showShortcut)
-                .frame(maxHeight: .infinity)
+            Group {
+                if showShortcut {
+                    Text(PinnedShortcutFormatting.menuLabel(slot: chip.slot))
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                } else {
+                    Image(systemName: chip.icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .symbolRenderingMode(.hierarchical)
+                }
+            }
+            .foregroundStyle(.primary)
+            .frame(width: showShortcut ? 44 : CaretPillMetrics.pinIconCellWidth)
+            .padding(.horizontal, showShortcut ? 6 : 4)
+            .animation(.easeOut(duration: 0.12), value: showShortcut)
+            .frame(maxHeight: .infinity)
                 .background {
                     if isHovered {
                         hoverShape.fill(Color.primary.opacity(0.1))

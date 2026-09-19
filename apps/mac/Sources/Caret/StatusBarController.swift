@@ -3,6 +3,7 @@ import ApplicationServices
 
 final class StatusBarController: NSObject, NSMenuDelegate {
     var onOpen: (() -> Void)?
+    var onSettings: (() -> Void)?
     var onFixAccessibility: (() -> Void)?
 
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -23,6 +24,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         let openItem = NSMenuItem(title: "Open Caret (⌘⌥)", action: #selector(openPanel), keyEquivalent: "")
         openItem.target = self
         menu.addItem(openItem)
+
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
 
         menu.addItem(.separator())
 
@@ -62,6 +67,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func openPanel() {
         onOpen?()
+    }
+
+    @objc private func openSettings() {
+        onSettings?()
     }
 
     @objc private func openAccessibility() {

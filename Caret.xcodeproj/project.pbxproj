@@ -18,9 +18,12 @@
 		B1000000000000000000002C /* PinnedActionsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* PinnedActionsStore.swift */; };
 		B1000000000000000000003A /* SkillRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* SkillRepository.swift */; };
 		B1000000000000000000003B /* ModifierChordState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000003C /* ModifierChordState.swift */; };
-		B10000000000000000000041 /* ScreenpipeSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000040 /* ScreenpipeSupervisor.swift */; };
-		B10000000000000000000042 /* ScreenpipeSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000040 /* ScreenpipeSupervisor.swift */; };
-		B10000000000000000000044 /* ScreenpipeSupervisorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000043 /* ScreenpipeSupervisorTests.swift */; };
+		B1000000000000000000003E /* CaretSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000003D /* CaretSettingsView.swift */; };
+		B1000000000000000000003F /* MemoryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000040 /* MemoryRepository.swift */; };
+		B10000000000000000000041 /* CaretNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000042 /* CaretNote.swift */; };
+		B10000000000000000000051 /* ScreenpipeSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000050 /* ScreenpipeSupervisor.swift */; };
+		B10000000000000000000052 /* ScreenpipeSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000050 /* ScreenpipeSupervisor.swift */; };
+		B10000000000000000000054 /* ScreenpipeSupervisorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000053 /* ScreenpipeSupervisorTests.swift */; };
 		B1000000000000000000002D /* PinnedActionsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* PinnedActionsStore.swift */; };
 		B1000000000000000000002E /* PinnedActionsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* PinnedActionsStoreTests.swift */; };
 		B10000000000000000000028 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* Assets.xcassets */; };
@@ -50,8 +53,11 @@
 		B1000000000000000000001D /* PinnedActionsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedActionsStore.swift; sourceTree = "<group>"; };
 		B10000000000000000000020 /* SkillRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillRepository.swift; sourceTree = "<group>"; };
 		B1000000000000000000003C /* ModifierChordState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierChordState.swift; sourceTree = "<group>"; };
-		B10000000000000000000040 /* ScreenpipeSupervisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpipeSupervisor.swift; sourceTree = "<group>"; };
-		B10000000000000000000043 /* ScreenpipeSupervisorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpipeSupervisorTests.swift; sourceTree = "<group>"; };
+		B1000000000000000000003D /* CaretSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaretSettingsView.swift; sourceTree = "<group>"; };
+		B10000000000000000000040 /* MemoryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryRepository.swift; sourceTree = "<group>"; };
+		B10000000000000000000042 /* CaretNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaretNote.swift; sourceTree = "<group>"; };
+		B10000000000000000000050 /* ScreenpipeSupervisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpipeSupervisor.swift; sourceTree = "<group>"; };
+		B10000000000000000000053 /* ScreenpipeSupervisorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpipeSupervisorTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001E /* PinnedActionsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedActionsStoreTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001F /* CaretTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CaretTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -113,7 +119,10 @@
 				B1000000000000000000001D /* PinnedActionsStore.swift */,
 				B10000000000000000000020 /* SkillRepository.swift */,
 				B1000000000000000000003C /* ModifierChordState.swift */,
-				B10000000000000000000040 /* ScreenpipeSupervisor.swift */,
+				B1000000000000000000003D /* CaretSettingsView.swift */,
+				B10000000000000000000040 /* MemoryRepository.swift */,
+				B10000000000000000000042 /* CaretNote.swift */,
+				B10000000000000000000050 /* ScreenpipeSupervisor.swift */,
 				B10000000000000000000018 /* Assets.xcassets */,
 			);
 			name = Caret;
@@ -132,7 +141,7 @@
 			isa = PBXGroup;
 			children = (
 				B1000000000000000000001E /* PinnedActionsStoreTests.swift */,
-				B10000000000000000000043 /* ScreenpipeSupervisorTests.swift */,
+				B10000000000000000000053 /* ScreenpipeSupervisorTests.swift */,
 			);
 			name = CaretTests;
 			path = apps/mac/Tests;
@@ -195,8 +204,8 @@
 			files = (
 				B1000000000000000000002E /* PinnedActionsStoreTests.swift in Sources */,
 				B1000000000000000000002D /* PinnedActionsStore.swift in Sources */,
-				B10000000000000000000042 /* ScreenpipeSupervisor.swift in Sources */,
-				B10000000000000000000044 /* ScreenpipeSupervisorTests.swift in Sources */,
+				B10000000000000000000052 /* ScreenpipeSupervisor.swift in Sources */,
+				B10000000000000000000054 /* ScreenpipeSupervisorTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -269,7 +278,10 @@
 				B1000000000000000000002C /* PinnedActionsStore.swift in Sources */,
 				B1000000000000000000003A /* SkillRepository.swift in Sources */,
 				B1000000000000000000003B /* ModifierChordState.swift in Sources */,
-				B10000000000000000000041 /* ScreenpipeSupervisor.swift in Sources */,
+				B1000000000000000000003E /* CaretSettingsView.swift in Sources */,
+				B1000000000000000000003F /* MemoryRepository.swift in Sources */,
+				B10000000000000000000041 /* CaretNote.swift in Sources */,
+				B10000000000000000000051 /* ScreenpipeSupervisor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
