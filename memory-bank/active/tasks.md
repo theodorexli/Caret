@@ -90,4 +90,4 @@ No new technology - validation not required
 - [x] Pre-Mortem complete
 - [x] Preflight
 - [x] Build
-- [ ] QA
+- [x] QA — FAIL: documentation says every existing listener is adopted and produces a lease, but a non-Screenpipe listener fails the required health check and writes no lease. Build must correct the wording.
