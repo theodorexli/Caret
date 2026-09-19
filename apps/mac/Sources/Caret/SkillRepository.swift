@@ -14,19 +14,6 @@ struct CaretSkill: Identifiable, Equatable, Codable {
     }
 }
 
-enum CaretPaths {
-    static var projectRoot: URL? {
-        guard let path = Bundle.main.object(forInfoDictionaryKey: "CaretProjectRoot") as? String,
-              !path.isEmpty
-        else { return nil }
-        return URL(fileURLWithPath: path, isDirectory: true)
-    }
-
-    static var skillsRoot: URL? {
-        projectRoot?.appendingPathComponent("caret/skills", isDirectory: true)
-    }
-}
-
 struct SkillRepository {
     func listActionIDs() -> [String] {
         guard let root = CaretPaths.skillsRoot,
@@ -121,6 +108,16 @@ struct SkillRepository {
             name: name,
             description: description
         )
+    }
+
+    func deleteActionDirectory(actionID: String) throws {
+        guard let root = CaretPaths.skillsRoot else { return }
+        let dir = root.appendingPathComponent(actionID, isDirectory: true)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: dir.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+            return
+        }
+        try FileManager.default.removeItem(at: dir)
     }
 
     static func slugify(_ text: String) -> String {

@@ -32,6 +32,22 @@ def build() -> None:
     if dist_app.exists():
         shutil.rmtree(dist_app)
     shutil.copytree(bundle, dist_app, symlinks=True)
+    seed_src = root / "caret" / "notes"
+    seed_dst = dist_app / "Contents" / "Resources" / "NotesSeed"
+    if seed_src.is_dir():
+        if seed_dst.exists():
+            shutil.rmtree(seed_dst)
+        shutil.copytree(seed_src, seed_dst)
+    plist = dist_app / "Contents" / "Info.plist"
+    if plist.is_file():
+        subprocess.run(
+            ["/usr/libexec/PlistBuddy", "-c", f"Set :CaretProjectRoot {root}", str(plist)],
+            check=False,
+        )
+        subprocess.run(
+            ["/usr/libexec/PlistBuddy", "-c", f"Add :CaretProjectRoot string {root}", str(plist)],
+            check=False,
+        )
     print(f"Built {dist_app}")
 
 

@@ -18,7 +18,7 @@ struct MemoryRepository {
     private static let storeFileName = "store.json"
 
     static var memoriesRoot: URL? {
-        CaretPaths.projectRoot?.appendingPathComponent("caret/memories", isDirectory: true)
+        CaretPaths.memoriesJSONRoot
     }
 
     func load() -> [StoredMemory] {

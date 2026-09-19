@@ -37,30 +37,67 @@ final class Model: ObservableObject {
     @Published private(set) var skillNotes: [CaretNote] = []
     @Published private(set) var memoryNotes: [CaretNote] = []
 
-    let actions: [CaretAction] = [
-        CaretAction(id: "book-flight", title: "Book flight"),
-        CaretAction(id: "book-calendar-link", title: "Calendar link"),
-        CaretAction(id: "revise", title: "Revise draft"),
-        CaretAction(id: "summarize", title: "Summarize"),
-        CaretAction(id: "translate", title: "Translate"),
-        CaretAction(id: "follow-up", title: "Draft follow-up"),
-        CaretAction(id: "extract-tasks", title: "Extract tasks"),
-        CaretAction(id: "tone-polite", title: "Make polite"),
-    ]
-
     init(pinStore: PinnedActionsStore = .load()) {
         self.pinStore = pinStore
         reloadCustomActions()
         reloadNotes()
     }
 
+    var actionSkillItems: [ActionSkillItem] {
+        allActions.map { action in
+            ActionSkillItem(action: action, note: skillNotes.first { $0.id == action.id })
+        }
+    }
+
     func reloadNotes() {
+        CaretPaths.bootstrapNotesStore()
         skillNotes = noteRepository.listSkillNotes()
         memoryNotes = noteRepository.listMemoryNotes()
         storedMemories = memoryRepository.load()
         memories = noteRepository.memoryContextItems()
         if memories.isEmpty {
             memories = storedMemories.map { MemoryItem(id: $0.id, text: $0.text, sourceApp: $0.sourceApp) }
+        }
+        onPinsChanged?()
+    }
+
+    func saveSkillNote(actionID: String, title: String, icon: String, body: String, apps: [String] = []) {
+        do {
+            _ = try noteRepository.saveSkillNote(
+                actionID: actionID,
+                title: title,
+                icon: icon,
+                body: body,
+                apps: apps
+            )
+            reloadNotes()
+            onPinsChanged?()
+        } catch {
+            NSLog("[Caret] save skill note failed: %@", String(describing: error))
+        }
+    }
+
+    func saveMemoryNote(noteID: String, title: String, icon: String, body: String, apps: [String]) {
+        do {
+            _ = try noteRepository.saveMemoryNote(
+                noteID: noteID,
+                title: title,
+                icon: icon,
+                body: body,
+                apps: apps
+            )
+            reloadNotes()
+        } catch {
+            NSLog("[Caret] save memory note failed: %@", String(describing: error))
+        }
+    }
+
+    func deleteMemoryNote(id: String) {
+        do {
+            try noteRepository.deleteMemoryNote(id: id)
+            reloadNotes()
+        } catch {
+            NSLog("[Caret] delete memory note failed: %@", String(describing: error))
         }
     }
 
@@ -95,9 +132,52 @@ final class Model: ObservableObject {
     }
 
     var allActions: [CaretAction] {
-        let builtInIDs = Set(actions.map(\.id))
-        let extras = customActions.filter { !builtInIDs.contains($0.id) }
-        return actions + extras
+        var byID: [String: CaretAction] = [:]
+        for note in skillNotes {
+            byID[note.id] = CaretAction(id: note.id, title: note.title)
+        }
+        for action in customActions where byID[action.id] == nil {
+            byID[action.id] = action
+        }
+        return byID.values.sorted {
+            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+    }
+
+    func deleteSkill(actionID: String) {
+        do {
+            try noteRepository.deleteSkillNote(actionID: actionID)
+            try skillRepository.deleteActionDirectory(actionID: actionID)
+            if pinStore.isPinned(actionID), let action = action(id: actionID) {
+                togglePin(action)
+            }
+            reloadCustomActions()
+            reloadNotes()
+        } catch {
+            NSLog("[Caret] delete skill failed: %@", String(describing: error))
+        }
+    }
+
+    @discardableResult
+    func createSkill(named title: String) -> String? {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let reserved = Set(allActions.map(\.id))
+        let actionID = noteRepository.makeUniqueSkillActionID(title: trimmed, reservedIDs: reserved)
+        do {
+            _ = try noteRepository.saveSkillNote(
+                actionID: actionID,
+                title: trimmed,
+                icon: "sparkle",
+                body: "Describe what this skill should do.\n"
+            )
+            reloadCustomActions()
+            reloadNotes()
+            return actionID
+        } catch {
+            NSLog("[Caret] create skill failed: %@", String(describing: error))
+            return nil
+        }
     }
 
     var trimmedPanelQuery: String {
@@ -109,9 +189,7 @@ final class Model: ObservableObject {
     }
 
     func reloadCustomActions() {
-        let builtIn = Set(actions.map(\.id))
         customActions = skillRepository.listActionIDs()
-            .filter { !builtIn.contains($0) }
             .map { CaretAction(id: $0, title: SkillRepository.displayTitle(actionID: $0)) }
     }
 
@@ -122,10 +200,11 @@ final class Model: ObservableObject {
     var pinnedChips: [PinnedActionChip] {
         pinnedActions.compactMap { action in
             guard let slot = pinStore.slot(for: action.id) else { return nil }
+            let note = skillNotes.first(where: { $0.id == action.id })
             return PinnedActionChip(
                 id: action.id,
-                title: action.title,
-                icon: noteRepository.skillIcon(actionID: action.id),
+                title: note?.title ?? action.title,
+                icon: note?.icon ?? CaretActionIcons.icon(for: action.id),
                 slot: slot
             )
         }
@@ -281,12 +360,13 @@ final class Model: ObservableObject {
 }
 
 enum ActionsMenuMetrics {
-    static let rowHeight: CGFloat = 24
+    static let rowHeight: CGFloat = 32
+    static let rowHeightWithSubtitle: CGFloat = 46
     static let maxVisibleRows: CGFloat = 8
-    static let width: CGFloat = 272
+    static let width: CGFloat = 300
 
     static var maxScrollHeight: CGFloat {
-        rowHeight * maxVisibleRows + 8
+        rowHeightWithSubtitle * maxVisibleRows + 8
     }
 }
 
@@ -311,7 +391,7 @@ struct SkillPickerView: View {
                     } label: {
                         Label(action.title, systemImage: "chevron.left")
                             .labelStyle(.titleAndIcon)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -401,18 +481,18 @@ private struct PanelSearchField: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.tertiary)
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13))
+                .font(.system(size: 14))
                 .focused($isFocused)
             if showsSettingsButton, let onSettings {
                 Button(action: onSettings) {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.secondary)
-                        .frame(width: 22, height: 22)
+                        .frame(width: 24, height: 24)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -431,10 +511,10 @@ private struct EmptyResultsHint: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 12))
+            .font(.system(size: 13))
             .foregroundStyle(.tertiary)
             .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -467,20 +547,20 @@ private struct ActionRow: View {
             Button(action: onSelect) {
                 HStack(spacing: 8) {
                     Text(title)
-                        .font(.system(size: 13))
+                        .font(.system(size: 14))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                     Spacer(minLength: 8)
                     if let shortcut {
                         Text(shortcut)
-                            .font(.system(size: 12))
+                            .font(.system(size: 13))
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
                 }
                 .padding(.leading, 12)
                 .padding(.trailing, 8)
-                .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -488,9 +568,9 @@ private struct ActionRow: View {
             if isPinned || canPin {
                 Button(action: onPin) {
                     Image(systemName: isPinned ? "pin.fill" : "pin")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(isPinned ? Color.accentColor : .secondary)
-                        .frame(width: 22, height: 22)
+                        .frame(width: 26, height: 26)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -524,17 +604,17 @@ private struct SkillRow: View {
             HStack(spacing: 8) {
                 if accent {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 13))
+                        .font(.system(size: 15))
                         .foregroundStyle(Color.accentColor)
                 }
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 13, weight: accent ? .medium : .regular))
+                        .font(.system(size: 14, weight: accent ? .medium : .regular))
                         .foregroundStyle(accent ? Color.accentColor : .primary)
                         .lineLimit(1)
                     if !subtitle.isEmpty {
                         Text(subtitle)
-                            .font(.system(size: 11))
+                            .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -543,11 +623,11 @@ private struct SkillRow: View {
             }
             .padding(.leading, accent ? 10 : 12)
             .padding(.trailing, 10)
-            .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .frame(height: subtitle.isEmpty ? ActionsMenuMetrics.rowHeight : ActionsMenuMetrics.rowHeight + 8)
+        .frame(height: subtitle.isEmpty ? ActionsMenuMetrics.rowHeight : ActionsMenuMetrics.rowHeightWithSubtitle)
         .padding(.horizontal, 6)
         .background {
             if isHovered {
@@ -570,7 +650,7 @@ final class CaretPanel: NSPanel {
     }
 
     private func frame(near point: CGPoint) -> NSRect {
-        let size = frame.size.width > 1 ? frame.size : CGSize(width: 280, height: 160)
+        let size = frame.size.width > 1 ? frame.size : CGSize(width: ActionsMenuMetrics.width, height: 200)
         let screen = AXHelpers.screen(containing: point)
         let visible = screen?.visibleFrame ?? NSRect(origin: .zero, size: size)
         let margin: CGFloat = 12
@@ -606,7 +686,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         self.model = model
 
         let panel = CaretPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 280, height: 160),
+            contentRect: NSRect(x: 0, y: 0, width: ActionsMenuMetrics.width, height: 200),
             styleMask: [.nonactivatingPanel, .borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -817,7 +897,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         if settingsWindow == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 640, height: 480),
+                contentRect: NSRect(x: 0, y: 0, width: 780, height: 540),
                 styleMask: [.titled, .closable, .miniaturizable],
                 backing: .buffered,
                 defer: false
@@ -825,10 +905,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.title = "Caret Settings"
             window.isReleasedWhenClosed = false
             window.delegate = self
+            window.toolbarStyle = .unified
             window.center()
             settingsWindow = window
         }
 
+        settingsWindow?.toolbarStyle = .unified
         settingsWindow?.contentView = NSHostingView(rootView: CaretSettingsView(model: model))
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)

@@ -2,7 +2,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from caret.notes import list_memory_notes, list_skill_notes, parse_note, skill_note_icon
+from caret.notes import (
+    ACTION_SKILL_ICONS,
+    ensure_action_skill_notes,
+    list_memory_notes,
+    list_skill_notes,
+    parse_note,
+    save_memory_note,
+    save_skill_note,
+    skill_note_icon,
+    write_note,
+)
 
 
 class NotesTests(unittest.TestCase):
@@ -47,8 +57,74 @@ Use United when price is close.
         titles = [n["title"] for n in list_skill_notes(repo_root=self.root)]
         self.assertEqual(titles, ["Book flight", "Zeta"])
 
-    def test_skill_note_icon_fallback(self):
-        self.assertEqual(skill_note_icon("book-flight", repo_root=self.root), "sparkle")
+    def test_skill_note_icon_uses_action_default_without_file(self):
+        self.assertEqual(skill_note_icon("book-flight", repo_root=self.root), ACTION_SKILL_ICONS["book-flight"])
+
+    def test_write_and_save_skill_note(self):
+        note = save_skill_note(
+            "revise",
+            title="Revise draft",
+            icon="pencil",
+            body="Keep my voice.",
+            repo_root=self.root,
+        )
+        self.assertEqual(note["id"], "revise")
+        path = self.root / "notes" / "skills" / "revise.md"
+        self.assertTrue(path.is_file())
+        reread = parse_note(path)
+        self.assertEqual(reread["body"], "Keep my voice.")
+
+    def test_save_skill_note_persists_apps(self):
+        note = save_skill_note(
+            "book-flight",
+            title="Book flight",
+            icon="airplane",
+            body="Search nonstop first.",
+            apps=["Slack", "Safari"],
+            repo_root=self.root,
+        )
+        self.assertEqual(note["apps"], ["Slack", "Safari"])
+        path = self.root / "notes" / "skills" / "book-flight.md"
+        self.assertEqual(parse_note(path)["apps"], ["Slack", "Safari"])
+
+    def test_ensure_action_skill_notes_creates_missing_only(self):
+        skills_dir = self.root / "notes" / "skills"
+        skills_dir.mkdir(parents=True)
+        (skills_dir / "summarize.md").write_text("---\ntitle: Summarize\nicon: list.bullet\n---\n", encoding="utf-8")
+        created = ensure_action_skill_notes(
+            [
+                ("summarize", "Summarize"),
+                ("translate", "Translate"),
+            ],
+            repo_root=self.root,
+        )
+        self.assertEqual(created, ["translate"])
+        self.assertTrue((skills_dir / "translate.md").is_file())
+
+    def test_save_memory_note(self):
+        note = save_memory_note(
+            "prefs",
+            title="Preferences",
+            icon="person.crop.circle",
+            body="Short sentences.",
+            apps=["Slack"],
+            repo_root=self.root,
+        )
+        self.assertEqual(note["apps"], ["Slack"])
+        self.assertEqual(len(list_memory_notes(repo_root=self.root)), 1)
+
+    def test_write_note_roundtrip(self):
+        path = self.root / "notes" / "memories" / "a.md"
+        write_note(
+            path,
+            title="A",
+            icon="star",
+            body="Body",
+            apps=["Mail"],
+        )
+        parsed = parse_note(path)
+        self.assertEqual(parsed["title"], "A")
+        self.assertEqual(parsed["apps"], ["Mail"])
 
 
 if __name__ == "__main__":
