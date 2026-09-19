@@ -1,0 +1,1 @@
+Translate uses a live non-empty selection or the clipboard; it never uses the caret line. Other gateway skills still do.
