@@ -1,6 +1,27 @@
 import ApplicationServices
 import AppKit
 
+struct FieldTextContext: Equatable {
+    let fullText: String
+    let selectedRangeLocation: Int
+    let selectedRangeLength: Int
+
+    var insertLocation: Int { selectedRangeLocation + selectedRangeLength }
+
+    var prefix: String {
+        let ns = fullText as NSString
+        let end = min(max(insertLocation, 0), ns.length)
+        let window = 1200
+        let start = max(0, end - window)
+        return ns.substring(with: NSRange(location: start, length: end - start))
+    }
+
+    var digest: String {
+        let tail = prefix.suffix(96)
+        return "\(fullText.count)-\(insertLocation)-\(tail.hashValue)"
+    }
+}
+
 struct SelectionTarget {
     enum Kind {
         case selection
@@ -12,6 +33,8 @@ struct SelectionTarget {
     var screenRect: CGRect
     var mouseLocation: CGPoint
     var sourceApp: String?
+    var fieldContext: FieldTextContext?
+    var focusedProcessID: pid_t?
 
     var anchor: CGPoint {
         if screenRect.width > 2, screenRect.height > 2 {
@@ -95,6 +118,8 @@ final class SelectionMonitor {
         let selectionBounds = element.flatMap { AXHelpers.selectedTextBounds($0) }
         let frame = element.flatMap { AXHelpers.frame($0) }
 
+        let fieldContext = element.flatMap { Self.fieldContext(from: $0) }
+
         if !selected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             publish(
                 SelectionTarget(
@@ -102,7 +127,9 @@ final class SelectionMonitor {
                     selectedText: selected,
                     screenRect: selectionBounds ?? CGRect(x: mouse.x, y: mouse.y, width: 1, height: 1),
                     mouseLocation: mouse,
-                    sourceApp: app.localizedName
+                    sourceApp: app.localizedName,
+                    fieldContext: fieldContext,
+                    focusedProcessID: app.processIdentifier
                 )
             )
             return
@@ -115,7 +142,9 @@ final class SelectionMonitor {
                     selectedText: "",
                     screenRect: frame ?? CGRect(x: mouse.x, y: mouse.y, width: 1, height: 1),
                     mouseLocation: mouse,
-                    sourceApp: app.localizedName
+                    sourceApp: app.localizedName,
+                    fieldContext: fieldContext,
+                    focusedProcessID: app.processIdentifier
                 )
             )
             return
@@ -138,9 +167,20 @@ final class SelectionMonitor {
             || description.contains("editor")
     }
 
+    private static func fieldContext(from element: AXUIElement) -> FieldTextContext? {
+        guard let value = AXHelpers.fieldValue(element) else { return nil }
+        guard let range = AXHelpers.selectedTextRange(element) else { return nil }
+        return FieldTextContext(
+            fullText: value,
+            selectedRangeLocation: range.location,
+            selectedRangeLength: range.length
+        )
+    }
+
     private func publish(_ target: SelectionTarget?) {
         let signature = target.map {
-            "\($0.kind)-\(Int($0.anchor.x))-\(Int($0.anchor.y))-\($0.sourceApp ?? "")"
+            let digest = $0.fieldContext?.digest ?? "-"
+            return "\($0.kind)-\(Int($0.anchor.x))-\(Int($0.anchor.y))-\($0.sourceApp ?? "")-\(digest)"
         } ?? "nil"
 
         if signature == lastSignature { return }

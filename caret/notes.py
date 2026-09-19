@@ -12,7 +12,7 @@ _FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n(.*)\Z", re.DOTALL)
 ACTION_SKILL_ICONS: dict[str, str] = {
     "book-flight": "airplane",
     "book-calendar-link": "calendar",
-    "follow-up": "envelope",
+    "auto-expand": "arrow.up.left.and.arrow.down.right",
     "revise": "pencil",
     "summarize": "list.bullet",
     "translate": "character.book.closed",

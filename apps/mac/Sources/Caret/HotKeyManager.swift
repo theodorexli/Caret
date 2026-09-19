@@ -61,9 +61,24 @@ final class HotKeyManager {
             self?.handle(event)
         }
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { [weak self] event in
+            if Self.shouldDeliverToTextInput(event) {
+                return event
+            }
             self?.handle(event)
             return event
         }
+    }
+
+    private static func shouldDeliverToTextInput(_ event: NSEvent) -> Bool {
+        guard event.type == .keyDown else { return false }
+        guard let responder = NSApp.keyWindow?.firstResponder else { return false }
+        if responder is NSTextView || responder is NSTextField {
+            return true
+        }
+        if let view = responder as? NSView, view.className.contains("FieldEditor") {
+            return true
+        }
+        return false
     }
 
     private func handle(_ event: NSEvent) {

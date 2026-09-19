@@ -63,14 +63,29 @@ enum CaretPaths {
                 copyMarkdown(from: repo.appendingPathComponent("skills"), to: skillsNotesDir)
             }
         }
-        if directoryIsEmpty(memoriesNotesDir) {
-            if let seed = bundleSeedNotesRoot {
-                copyMarkdown(from: seed.appendingPathComponent("memories"), to: memoriesNotesDir)
-            }
-            if directoryIsEmpty(memoriesNotesDir), let repo = repoNotesRoot {
-                copyMarkdown(from: repo.appendingPathComponent("memories"), to: memoriesNotesDir)
+        migrateFollowUpSkillToAutoExpand()
+    }
+
+    /// One-time rename: seeded `follow-up` skill → `auto-expand`.
+    private static func migrateFollowUpSkillToAutoExpand() {
+        let fm = FileManager.default
+        let legacy = skillsNotesDir.appendingPathComponent("follow-up.md")
+        let renamed = skillsNotesDir.appendingPathComponent("auto-expand.md")
+        guard fm.fileExists(atPath: legacy.path) else { return }
+
+        if !fm.fileExists(atPath: renamed.path) {
+            if let seed = bundleSeedNotesRoot?.appendingPathComponent("skills/auto-expand.md"),
+               fm.fileExists(atPath: seed.path) {
+                try? fm.copyItem(at: seed, to: renamed)
+            } else if let repo = repoNotesRoot?.appendingPathComponent("skills/auto-expand.md"),
+                      fm.fileExists(atPath: repo.path) {
+                try? fm.copyItem(at: repo, to: renamed)
+            } else {
+                try? fm.moveItem(at: legacy, to: renamed)
+                return
             }
         }
+        try? fm.removeItem(at: legacy)
     }
 
     private static var bundleSeedNotesRoot: URL? {

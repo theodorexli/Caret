@@ -296,7 +296,7 @@ enum CaretActionIcons {
         switch actionID {
         case "book-flight": return "airplane"
         case "book-calendar-link": return "calendar"
-        case "follow-up": return "envelope"
+        case "auto-expand": return "arrow.up.left.and.arrow.down.right"
         case "revise": return "pencil"
         case "summarize": return "list.bullet"
         case "translate": return "character.book.closed"

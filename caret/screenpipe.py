@@ -108,10 +108,12 @@ def _structure(lease: dict, frame_id) -> tuple[list[dict] | None, str | None]:
     return structure, "accessibility"
 
 
-def _record(lease: dict, item: dict) -> dict:
+def _record(lease: dict, item: dict, include_structure: bool = True) -> dict:
     content = item.get("content") or {}
     frame_id = content.get("frame_id") or content.get("id")
-    structure, source = _structure(lease, frame_id)
+    structure, source = (None, None)
+    if include_structure:
+        structure, source = _structure(lease, frame_id)
     return {
         "timestamp": content.get("timestamp"),
         "app": content.get("app_name") or "",
@@ -132,7 +134,12 @@ def _require_health(lease: dict) -> None:
         raise ValueError("screenpipe is not healthy")
 
 
-def last_n_minutes(minutes: int, lease_path: Path | None = None) -> dict:
+def last_n_minutes(
+    minutes: int,
+    lease_path: Path | None = None,
+    include_structure: bool = True,
+    record_cap: int | None = None,
+) -> dict:
     if minutes < 1:
         raise ValueError("minutes must be >= 1")
     lease = load_lease(lease_path)
@@ -140,13 +147,19 @@ def last_n_minutes(minutes: int, lease_path: Path | None = None) -> dict:
     start = (datetime.now().astimezone() - timedelta(minutes=minutes)).isoformat(timespec="seconds")
     payload = _api(lease, "/search", {"limit": 200, "content_type": "all", "start_time": start, "order": "descending"})
     items = payload.get("data") or []
-    records = [_record(lease, item) for item in items]
+    if record_cap is not None:
+        items = items[:record_cap]
+    records = [_record(lease, item, include_structure=include_structure) for item in items]
     if not records:
         raise ValueError("no screenpipe history in the requested minutes")
     return {"kind": "minutes", "n": minutes, "records": records}
 
 
-def last_n_windows(count: int, lease_path: Path | None = None) -> dict:
+def last_n_windows(
+    count: int,
+    lease_path: Path | None = None,
+    include_structure: bool = True,
+) -> dict:
     if count < 1:
         raise ValueError("windows must be >= 1")
     lease = load_lease(lease_path)
@@ -165,8 +178,43 @@ def last_n_windows(count: int, lease_path: Path | None = None) -> dict:
             break
     if len(seen) < count:
         raise ValueError("not enough distinct screenpipe windows")
-    return {"kind": "windows", "n": count, "records": [_record(lease, item) for item in seen]}
+    return {
+        "kind": "windows",
+        "n": count,
+        "records": [_record(lease, item, include_structure=include_structure) for item in seen],
+    }
 
+
+def _snippet(record: dict, snippet_chars: int) -> dict:
+    text = record.get("text") or ""
+    if len(text) > snippet_chars:
+        text = text[:snippet_chars]
+    return {
+        "app": record.get("app") or "",
+        "title": record.get("title") or "",
+        "timestamp": record.get("timestamp"),
+        "text": text,
+    }
+
+
+def debug_preview(lease_path: Path | None = None, n: int = 2, snippet_chars: int = 80) -> dict:
+    """Last-n snippets of windows, minutes, and clipboard. Per-slice errors stay in the payload."""
+    loaders = (
+        ("windows", lambda: last_n_windows(n, lease_path, include_structure=False)),
+        ("minutes", lambda: last_n_minutes(n, lease_path, include_structure=False, record_cap=n)),
+        ("clipboard", lambda: last_n_clipboard(n, lease_path)),
+    )
+    sections: dict[str, dict] = {}
+    for kind, loader in loaders:
+        try:
+            payload = loader()
+            sections[kind] = {
+                "ok": True,
+                "items": [_snippet(record, snippet_chars) for record in payload["records"][:n]],
+            }
+        except ValueError as error:
+            sections[kind] = {"ok": False, "error": str(error), "items": []}
+    return {"n": n, **sections}
 
 def last_n_clipboard(count: int, lease_path: Path | None = None) -> dict:
     if count < 1:

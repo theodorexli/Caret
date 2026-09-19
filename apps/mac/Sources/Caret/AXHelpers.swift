@@ -107,4 +107,67 @@ enum AXHelpers {
     static func openAccessibilitySettings() {
         AccessibilityTrust.openSettings()
     }
+
+    static func selectedTextRange(_ element: AXUIElement) -> NSRange? {
+        var rangeRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
+              let rangeRef
+        else { return nil }
+
+        var cfRange = CFRange(location: 0, length: 0)
+        guard AXValueGetValue(rangeRef as! AXValue, .cfRange, &cfRange) else { return nil }
+        guard cfRange.location >= 0, cfRange.length >= 0 else { return nil }
+        return NSRange(location: cfRange.location, length: cfRange.length)
+    }
+
+    static func fieldValue(_ element: AXUIElement) -> String? {
+        if let value = stringValue(element, kAXValueAttribute as CFString), !value.isEmpty {
+            return value
+        }
+        return stringValue(element, kAXSelectedTextAttribute as CFString)
+    }
+
+    @discardableResult
+    static func setFieldValue(_ element: AXUIElement, _ value: String) -> Bool {
+        let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, value as CFTypeRef)
+        return result == .success
+    }
+
+    /// Inserts `text` at the current caret (end of the selected range).
+    @discardableResult
+    static func insertAtCaret(_ element: AXUIElement, text: String) -> Bool {
+        guard !text.isEmpty else { return false }
+        guard let value = fieldValue(element) else { return false }
+        guard let range = selectedTextRange(element) else { return false }
+
+        let nsValue = value as NSString
+        let insertLocation = min(range.location + range.length, nsValue.length)
+        let updated = nsValue.replacingCharacters(
+            in: NSRange(location: insertLocation, length: 0),
+            with: text
+        )
+        guard setFieldValue(element, updated) else { return false }
+
+        var newRange = CFRange(location: insertLocation + (text as NSString).length, length: 0)
+        guard let axRange = AXValueCreate(.cfRange, &newRange) else { return true }
+        _ = AXUIElementSetAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, axRange)
+        return true
+    }
+
+    static func caretBounds(_ element: AXUIElement) -> CGRect? {
+        guard let range = selectedTextRange(element) else { return nil }
+        var cfRange = CFRange(location: range.location, length: max(range.length, 0))
+        guard let axRange = AXValueCreate(.cfRange, &cfRange) else { return nil }
+        var boundsRef: CFTypeRef?
+        let result = AXUIElementCopyParameterizedAttributeValue(
+            element,
+            kAXBoundsForRangeParameterizedAttribute as CFString,
+            axRange,
+            &boundsRef
+        )
+        guard result == .success, let boundsRef else { return frame(element) }
+        var rect = CGRect.zero
+        guard AXValueGetValue(boundsRef as! AXValue, .cgRect, &rect) else { return frame(element) }
+        return cocoaRect(fromAX: rect)
+    }
 }

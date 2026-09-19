@@ -18,8 +18,6 @@ struct CaretSettingsView: View {
     @State private var tab: SettingsTab = .skills
     @State private var selectedSkillActionID: String?
     @State private var selectedMemoryNoteID: String?
-    @State private var showingNewMemory = false
-    @State private var showingNewSkill = false
     @State private var sidebarCollapsed = false
 
     @State private var editTitle = ""
@@ -30,6 +28,9 @@ struct CaretSettingsView: View {
     @State private var autosaveTask: Task<Void, Never>?
     @State private var saveStatus: SaveStatus = .idle
     @State private var editorBaseline: EditorSnapshot?
+    /// After + New, keep an empty detail shell until the user edits or picks another row.
+    @State private var composeShellSkillID: String?
+    @State private var composeShellMemoryID: String?
 
     private let accentBlue = Color(red: 0.26, green: 0.52, blue: 0.98)
     private let autosaveDelayNs: UInt64 = 450_000_000
@@ -79,14 +80,18 @@ struct CaretSettingsView: View {
         .onChange(of: model.actionSkillItems) { _, _ in syncSkillSelection() }
         .onChange(of: model.memoryNotes) { _, _ in syncMemorySelection() }
         .onChange(of: selectedSkillActionID) { _, newID in
-            guard tab == .skills, let newID,
-                  let item = model.actionSkillItems.first(where: { $0.action.id == newID }) else { return }
+            guard tab == .skills, let newID else { return }
+            if newID == composeShellSkillID { return }
+            composeShellSkillID = nil
+            guard let item = model.actionSkillItems.first(where: { $0.action.id == newID }) else { return }
             flushAutosave()
             applySkillEditor(item: item)
         }
         .onChange(of: selectedMemoryNoteID) { _, newID in
-            guard tab == .memories, let newID,
-                  let note = model.memoryNotes.first(where: { $0.id == newID }) else { return }
+            guard tab == .memories, let newID else { return }
+            if newID == composeShellMemoryID { return }
+            composeShellMemoryID = nil
+            guard let note = model.memoryNotes.first(where: { $0.id == newID }) else { return }
             flushAutosave()
             applyMemoryEditor(note: note)
         }
@@ -95,18 +100,6 @@ struct CaretSettingsView: View {
         .onChange(of: editBody) { _, _ in scheduleAutosave() }
         .onChange(of: editApps) { _, _ in scheduleAutosave() }
         .onDisappear { flushAutosave() }
-        .sheet(isPresented: $showingNewMemory) {
-            NewMemorySheet(model: model, isPresented: $showingNewMemory)
-        }
-        .sheet(isPresented: $showingNewSkill) {
-            NewSkillSheet(model: model, isPresented: $showingNewSkill) { newID in
-                tab = .skills
-                selectedSkillActionID = newID
-                if let item = model.actionSkillItems.first(where: { $0.action.id == newID }) {
-                    applySkillEditor(item: item)
-                }
-            }
-        }
     }
 
     private var detailColumn: some View {
@@ -143,8 +136,9 @@ struct CaretSettingsView: View {
                         ForEach(model.actionSkillItems) { item in
                             SkillActionRow(
                                 item: item,
-                                isDeletable: true,
-                                onDelete: { removeSkill(item.action.id) }
+                                isPinned: model.pinStore.isPinned(item.action.id),
+                                canPin: model.canPin(item.action),
+                                onTogglePin: { model.togglePin(item.action) }
                             )
                                 .tag(item.action.id)
                                 .sidebarListRowStyle
@@ -241,9 +235,9 @@ struct CaretSettingsView: View {
             Spacer()
             Button {
                 if tab == .skills {
-                    showingNewSkill = true
+                    beginNewSkill()
                 } else {
-                    showingNewMemory = true
+                    beginNewMemory()
                 }
             } label: {
                 Image(systemName: "plus.circle.fill")
@@ -296,7 +290,6 @@ struct CaretSettingsView: View {
                     onDelete: { removeSkill(item.action.id) }
                 )
                 .id(item.action.id)
-                .onAppear { applySkillEditor(item: item) }
             } else {
                 ContentUnavailableView("Select an action", systemImage: "wand.and.stars")
             }
@@ -307,7 +300,7 @@ struct CaretSettingsView: View {
                 } description: {
                     Text("Capture preferences and context Caret should remember.")
                 } actions: {
-                    Button("New memory") { showingNewMemory = true }
+                    Button("New memory") { beginNewMemory() }
                         .buttonStyle(.borderedProminent)
                 }
             } else if let id = selectedMemoryNoteID,
@@ -323,7 +316,6 @@ struct CaretSettingsView: View {
                     onDelete: { model.deleteMemoryNote(id: note.id) }
                 )
                 .id(note.id)
-                .onAppear { applyMemoryEditor(note: note) }
             } else {
                 ContentUnavailableView("Select a memory", systemImage: "tray.full")
             }
@@ -359,6 +351,9 @@ struct CaretSettingsView: View {
     }
 
     private func syncSkillSelection() {
+        if let composeShellSkillID, composeShellSkillID == selectedSkillActionID {
+            return
+        }
         let previous = selectedSkillActionID
         if selectedSkillActionID == nil || !model.actionSkillItems.contains(where: { $0.action.id == selectedSkillActionID }) {
             selectedSkillActionID = model.actionSkillItems.first?.action.id
@@ -371,6 +366,9 @@ struct CaretSettingsView: View {
     }
 
     private func syncMemorySelection() {
+        if let composeShellMemoryID, composeShellMemoryID == selectedMemoryNoteID {
+            return
+        }
         let previous = selectedMemoryNoteID
         if selectedMemoryNoteID == nil || !model.memoryNotes.contains(where: { $0.id == selectedMemoryNoteID }) {
             selectedMemoryNoteID = model.memoryNotes.first?.id
@@ -449,22 +447,30 @@ struct CaretSettingsView: View {
         switch tab {
         case .skills:
             guard let id = selectedSkillActionID else { return }
+            let title = resolvedSkillTitle(for: id)
             model.saveSkillNote(
                 actionID: id,
-                title: editTitle,
+                title: title,
                 icon: editIcon,
                 body: editBody,
                 apps: normalizedApps(parseApps(editApps))
             )
+            if id == composeShellSkillID {
+                composeShellSkillID = nil
+            }
         case .memories:
             guard let id = selectedMemoryNoteID else { return }
+            let title = resolvedMemoryTitle(for: id)
             model.saveMemoryNote(
                 noteID: id,
-                title: editTitle,
+                title: title,
                 icon: editIcon,
                 body: editBody,
                 apps: []
             )
+            if id == composeShellMemoryID {
+                composeShellMemoryID = nil
+            }
         }
         editorBaseline = currentEditorSnapshot()
         saveStatus = .saved
@@ -490,6 +496,51 @@ struct CaretSettingsView: View {
 
     private func normalizedApps(_ apps: [String]) -> [String] {
         apps.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    private func beginNewSkill() {
+        flushAutosave()
+        composeShellMemoryID = nil
+        guard let id = model.createBlankSkill() else { return }
+        tab = .skills
+        composeShellSkillID = id
+        selectedSkillActionID = id
+        applyComposeShell(defaultIcon: "sparkle")
+    }
+
+    private func beginNewMemory() {
+        flushAutosave()
+        composeShellSkillID = nil
+        guard let id = model.createBlankMemory() else { return }
+        tab = .memories
+        composeShellMemoryID = id
+        selectedMemoryNoteID = id
+        applyComposeShell(defaultIcon: "tray.full")
+    }
+
+    private func applyComposeShell(defaultIcon: String) {
+        autosaveTask?.cancel()
+        autosaveTask = nil
+        suppressAutosave = true
+        editTitle = ""
+        editIcon = defaultIcon
+        editBody = ""
+        editApps = ""
+        editorBaseline = EditorSnapshot(title: "", icon: defaultIcon, body: "", apps: [])
+        saveStatus = .idle
+        suppressAutosave = false
+    }
+
+    private func resolvedSkillTitle(for actionID: String) -> String {
+        let trimmed = editTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+        return model.skillNotes.first(where: { $0.id == actionID })?.title ?? "Untitled skill"
+    }
+
+    private func resolvedMemoryTitle(for noteID: String) -> String {
+        let trimmed = editTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+        return model.memoryNotes.first(where: { $0.id == noteID })?.title ?? "Untitled"
     }
 
     private func removeSkill(_ actionID: String) {
@@ -551,10 +602,21 @@ private extension View {
 
 private struct SkillActionRow: View {
     let item: ActionSkillItem
-    var isDeletable: Bool = false
-    var onDelete: (() -> Void)?
+    let isPinned: Bool
+    let canPin: Bool
+    let onTogglePin: () -> Void
 
     @State private var isHovering = false
+
+    private var pinHelp: String {
+        if isPinned {
+            return "Unpin from Caret bar"
+        }
+        if canPin {
+            return "Pin to Caret bar (max \(PinnedActionsStore.maxPinned))"
+        }
+        return "Unpin another action first (max \(PinnedActionsStore.maxPinned))"
+    }
 
     var body: some View {
         let icon = item.note?.icon ?? CaretActionIcons.icon(for: item.action.id)
@@ -573,17 +635,26 @@ private struct SkillActionRow: View {
                     .opacity(item.note == nil ? 0 : 1)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if isDeletable, isHovering, let onDelete {
-                Button(action: onDelete) {
-                    Image(systemName: "trash")
+            Group {
+                if isHovering {
+                    Button(action: onTogglePin) {
+                        Image(systemName: isPinned ? "pin.fill" : "pin")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(isPinned ? Color.accentColor : .secondary)
+                            .padding(6)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!isPinned && !canPin)
+                    .help(pinHelp)
+                } else if isPinned {
+                    Image(systemName: "pin.fill")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(6)
-                        .background(.ultraThinMaterial, in: Circle())
+                        .foregroundStyle(Color.accentColor)
+                        .accessibilityLabel("Pinned to Caret bar")
                 }
-                .buttonStyle(.plain)
-                .help("Remove skill")
             }
+            .frame(width: 28, alignment: .trailing)
         }
         .padding(.vertical, 2)
         .frame(maxWidth: .infinity, minHeight: SidebarListMetrics.rowMinHeight - 10, alignment: .leading)
@@ -757,6 +828,11 @@ private struct InlineTitleField: View {
     }
 }
 
+private enum SkillDetailActionButtonMetrics {
+    static let width: CGFloat = 104
+    static let height: CGFloat = 28
+}
+
 private struct SkillDetailPinButton: View {
     let isPinned: Bool
     let canPin: Bool
@@ -775,23 +851,24 @@ private struct SkillDetailPinButton: View {
 
     var body: some View {
         Button(action: onToggle) {
-            HStack(spacing: 4) {
+            Group {
                 if isPinned {
-                    Text("Pinned")
-                        .font(.subheadline.weight(.semibold))
-                    if let shortcutLabel {
-                        Text(shortcutLabel)
-                            .font(.caption.weight(.semibold))
-                            .monospacedDigit()
+                    HStack(spacing: 4) {
+                        Text("Pinned")
+                        if let shortcutLabel {
+                            Text(shortcutLabel)
+                                .monospacedDigit()
+                        }
                     }
                 } else {
                     Text("Pin to bar")
-                        .font(.subheadline.weight(.medium))
                 }
             }
+            .font(.subheadline.weight(isPinned ? .semibold : .medium))
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
             .foregroundStyle(isPinned ? Color.accentColor : (canPin ? Color.secondary : Color.secondary.opacity(0.45)))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .frame(width: SkillDetailActionButtonMetrics.width, height: SkillDetailActionButtonMetrics.height)
             .background {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color.primary.opacity(isPinned ? 0.1 : 0.05))
@@ -802,6 +879,23 @@ private struct SkillDetailPinButton: View {
         .disabled(!isPinned && !canPin)
         .help(helpText)
         .accessibilityLabel(isPinned ? "Pinned" : "Pin to bar")
+    }
+}
+
+private struct SkillDetailDeleteButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button("Delete", role: .destructive, action: action)
+            .buttonStyle(.plain)
+            .font(.subheadline.weight(.medium))
+            .lineLimit(1)
+            .frame(width: SkillDetailActionButtonMetrics.width, height: SkillDetailActionButtonMetrics.height)
+            .background {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.primary.opacity(0.05))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -866,8 +960,8 @@ private struct SkillNoteEditor: View {
                 HStack(alignment: .center, spacing: 14) {
                     IconPickerBadge(icon: $icon, accent: accent, choices: iconChoices, size: 52)
                     VStack(alignment: .leading, spacing: 4) {
-                        HStack(alignment: .center, spacing: 10) {
-                            InlineTitleField(text: $title, placeholder: action.title)
+                        HStack(alignment: .center, spacing: 8) {
+                            InlineTitleField(text: $title, placeholder: "Skill name")
                             SkillDetailPinButton(
                                 isPinned: isPinned,
                                 canPin: canPin,
@@ -875,16 +969,10 @@ private struct SkillNoteEditor: View {
                                 onToggle: { model.togglePin(action) }
                             )
                             if canDelete, let onDelete {
-                                Button("Delete", role: .destructive, action: onDelete)
-                                    .controlSize(.small)
+                                SkillDetailDeleteButton(action: onDelete)
                             }
                         }
                         NoteDetailUpdatedLine(updatedAt: note?.updatedAt, status: saveStatus)
-                        if !canDelete {
-                            Text("Starter action — edit and pin; can’t remove from the list.")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        }
                     }
                 }
                 SkillAppsField(appsText: $appsText)
@@ -1167,75 +1255,5 @@ private struct MemoryNoteEditor: View {
                 .padding(.bottom, NoteDetailMetrics.bodyBottomPadding)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-}
-
-private struct NewSkillSheet: View {
-    @ObservedObject var model: Model
-    @Binding var isPresented: Bool
-    let onCreated: (String) -> Void
-    @State private var title = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("New skill")
-                .font(.title2.weight(.semibold))
-            Text("Creates a custom action with its own instructions.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            TextField("Skill name", text: $title)
-                .textFieldStyle(.roundedBorder)
-            HStack {
-                Spacer()
-                Button("Cancel") { isPresented = false }
-                Button("Create") {
-                    if let id = model.createSkill(named: title) {
-                        onCreated(id)
-                        isPresented = false
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-        }
-        .padding(24)
-        .frame(width: 400)
-    }
-}
-
-private struct NewMemorySheet: View {
-    @ObservedObject var model: Model
-    @Binding var isPresented: Bool
-    @State private var title = ""
-    @State private var icon = "tray.full"
-    @State private var bodyText = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("New memory")
-                .font(.title2.weight(.semibold))
-            TextField("Title", text: $title)
-            TextEditor(text: $bodyText)
-                .frame(minHeight: 160)
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.15)))
-            HStack {
-                Spacer()
-                Button("Cancel") { isPresented = false }
-                Button("Create") {
-                    model.saveMemoryNote(
-                        noteID: title,
-                        title: title,
-                        icon: icon,
-                        body: bodyText,
-                        apps: []
-                    )
-                    isPresented = false
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-        }
-        .padding(24)
-        .frame(width: 440)
     }
 }

@@ -199,9 +199,9 @@ private struct PinnedStripCell: View {
                 }
             }
             .foregroundStyle(.primary)
+            // Keyboard hints must appear immediately when the modifier chord changes.
             .frame(width: showShortcut ? 44 : CaretPillMetrics.pinIconCellWidth)
             .padding(.horizontal, showShortcut ? 6 : 4)
-            .animation(.easeOut(duration: 0.12), value: showShortcut)
             .frame(maxHeight: .infinity)
                 .background {
                     if isHovered {
@@ -211,6 +211,8 @@ private struct PinnedStripCell: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+        .accessibilityLabel(chip.title)
+        .accessibilityHint("Opens actions for \(chip.title)")
         .help("\(chip.title) (\(PinnedShortcutFormatting.menuLabel(slot: chip.slot)))")
     }
 }
@@ -257,7 +259,8 @@ struct TriggerButtonView: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .help("Caret")
+        .accessibilityLabel("Open Caret actions")
+        .help("Open Caret actions")
         .frame(width: 40, height: 40)
     }
 }

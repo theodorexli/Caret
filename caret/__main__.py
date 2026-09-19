@@ -3,9 +3,10 @@ import json
 import sys
 from pathlib import Path
 
+from .auto_expand import complete_auto_expand
 from .completions import DEFAULT_MODEL, CompletionError, complete_text
 from .planner import plan
-from .screenpipe import last_n_clipboard, last_n_minutes, last_n_windows
+from .screenpipe import debug_preview, last_n_clipboard, last_n_minutes, last_n_windows
 from .skills import create_skill, filter_skills, list_skills
 from .store import Store
 
@@ -42,10 +43,19 @@ def main() -> int:
     clipboard = commands.add_parser("history-clipboard")
     clipboard.add_argument("--count", type=int, default=3)
     clipboard.add_argument("--lease", type=Path, default=None)
+    debug_cmd = commands.add_parser("history-debug")
+    debug_cmd.add_argument("--lease", type=Path, default=None)
     complete_cmd = commands.add_parser("complete", help="Gemini 2.5 Flash via Vercel AI Gateway")
     complete_cmd.add_argument("--prompt", required=True)
     complete_cmd.add_argument("--system", default="")
     complete_cmd.add_argument("--model", default=DEFAULT_MODEL)
+    auto_expand_cmd = commands.add_parser(
+        "auto-expand",
+        help="Inline continuation for the Auto-expand skill (stdout = suffix only)",
+    )
+    auto_expand_cmd.add_argument("--prefix", required=True)
+    auto_expand_cmd.add_argument("--instructions", default="")
+    auto_expand_cmd.add_argument("--model", default=DEFAULT_MODEL)
     args = parser.parse_args()
     if args.command == "history-minutes":
         try:
@@ -68,8 +78,23 @@ def main() -> int:
         except ValueError as error:
             print(json.dumps({"error": str(error)}), file=sys.stderr)
             return 1
+    if args.command == "history-debug":
+        print(json.dumps(debug_preview(args.lease), indent=2))
+        return 0
     if args.command == "workflows":
         print(Path(__file__).with_name("workflows.json").read_text())
+        return 0
+    if args.command == "auto-expand":
+        try:
+            suffix = complete_auto_expand(
+                prefix=args.prefix,
+                instructions=args.instructions,
+                model=args.model,
+            )
+        except CompletionError as error:
+            print(json.dumps({"error": str(error)}), file=sys.stderr)
+            return 1
+        print(suffix, end="")
         return 0
     if args.command == "complete":
         try:
