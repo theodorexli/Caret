@@ -94,6 +94,45 @@ class HistoryDebugTests(unittest.TestCase):
             self.assertEqual(result["windows"]["items"][0]["text"], "x" * 80)
             self.assertEqual(result["clipboard"]["items"][0]["text"], "newer copy")
 
+    def test_preview_clips_debug_window_from_windows(self):
+        """Opening Debug records Caret Debug as newest; the glance must skip it."""
+        with tempfile.TemporaryDirectory() as directory:
+            lease = _lease(directory)
+
+            def fake_api(_lease, path, params=None):
+                if path == "/health":
+                    return {"status": "healthy", "version": "0.4.50"}
+                if path.endswith("/elements"):
+                    raise AssertionError("debug preview must not hydrate accessibility structure")
+                if (params or {}).get("content_type") == "input":
+                    return {
+                        "data": [
+                            _clip("Safari", "Inbox", "newer copy", "2026-09-19T12:03:00-05:00"),
+                            _clip("Cursor", "hackathon", "older copy", "2026-09-19T12:01:00-05:00"),
+                        ]
+                    }
+                return {
+                    "data": [
+                        _ocr("Caret", "Caret Debug", "debug text", "2026-09-19T12:03:00-05:00", 3),
+                        _ocr("Safari", "Inbox", "inbox text", "2026-09-19T12:02:00-05:00", 2),
+                        _ocr("Cursor", "hackathon", "hello", "2026-09-19T12:01:00-05:00", 1),
+                    ]
+                }
+
+            with patch("caret.screenpipe._api", side_effect=fake_api):
+                result = debug_preview(lease, n=2)
+
+            self.assertTrue(result["windows"]["ok"], result["windows"])
+            self.assertEqual(
+                [(row["app"], row["title"]) for row in result["windows"]["items"]],
+                [("Safari", "Inbox"), ("Cursor", "hackathon")],
+            )
+            self.assertNotIn("Caret Debug", [row["title"] for row in result["windows"]["items"]])
+            self.assertEqual(
+                [(row["app"], row["title"]) for row in result["minutes"]["items"]],
+                [("Caret", "Caret Debug"), ("Safari", "Inbox")],
+            )
+
     def test_preview_caps_minutes_at_two(self):
         with tempfile.TemporaryDirectory() as directory:
             lease = _lease(directory)

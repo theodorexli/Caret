@@ -1,10 +1,11 @@
 # Active Context
 
 ## Current Task: caret-debug-clip-self-from-windows
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
-- Classified as Level 1: Debug last-N windows always lists the Debug window as newest; isolated defect in one preview path.
+- Added `last_n_windows(..., skip_titles=)` and passed `{DEBUG_WINDOW_TITLE}` from `debug_preview`.
+- Test: newest OCR row titled Caret Debug is omitted; Safari then Cursor remain; minutes still include Debug.
 
 ## Next Step
-- Load the Level 1 workflow and start Build.
+- `/niko-qa`
