@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 from email import policy
 from email.parser import Parser
+from typing import Sequence
 
 
 def timestamp(value: str) -> datetime:
@@ -32,19 +33,60 @@ def extract_thread(raw: str) -> dict:
     }
 
 
+def check_schedule_inputs(duration: int, before: int, after: int) -> None:
+    if type(duration) is not int or duration <= 0:
+        raise ValueError("duration_minutes must be a positive integer")
+    if any(type(value) is not int or value < 0 for value in (before, after)):
+        raise ValueError("Travel buffers must be nonnegative integer minutes")
+
+
+def schedule_options(
+    candidates: Sequence[tuple[str, datetime]],
+    duration: int,
+    busy: Sequence[tuple[datetime, datetime]],
+    before: int = 0,
+    after: int = 0,
+    limit: int = 3,
+) -> tuple[list[dict], list[str]]:
+    """Filter offset-aware candidate starts against busy intervals.
+
+    Shared by :func:`plan` and the live meeting adapter so both apply one rule:
+    a candidate is dropped when its buffered hold overlaps any busy interval, or
+    when an earlier candidate already claimed the same start. Returns the kept
+    options sorted by start and truncated to ``limit``, plus the dropped IDs.
+    Callers own where the candidates and busy intervals came from.
+    """
+    check_schedule_inputs(duration, before, after)
+    options: list[dict] = []
+    dropped: list[str] = []
+    seen: set[datetime] = set()
+    for candidate_id, start in candidates:
+        end = start + timedelta(minutes=duration)
+        blocked_start = start - timedelta(minutes=before)
+        blocked_end = end + timedelta(minutes=after)
+        if start in seen or any(blocked_start < hi and lo < blocked_end for lo, hi in busy):
+            dropped.append(candidate_id)
+            continue
+        seen.add(start)
+        options.append({
+            "id": candidate_id, "start": start.isoformat(), "end": end.isoformat(),
+            "hold_start": blocked_start.isoformat(), "hold_end": blocked_end.isoformat(),
+        })
+    options = sorted(options, key=lambda item: timestamp(item["start"]))[:limit]
+    return options, dropped
+
+
 def plan(fixture: dict) -> dict:
     if fixture.get("mode") != "sample":
         raise ValueError("This starter accepts labeled sample data only; connect live adapters first")
     thread = extract_thread(fixture["thread"])
     duration = fixture["duration_minutes"]
     before, after = fixture["buffer_before_minutes"], fixture["buffer_after_minutes"]
-    if type(duration) is not int or duration <= 0:
-        raise ValueError("duration_minutes must be a positive integer")
-    if any(type(value) is not int or value < 0 for value in (before, after)):
-        raise ValueError("Travel buffers must be nonnegative integer minutes")
+    check_schedule_inputs(duration, before, after)
     busy = [interval(item["start"], item["end"]) for item in fixture["busy"]]
-    options, dropped = [], []
-    seen = set()
+    supported: list[tuple[str, datetime]] = []
+    sources: dict[str, str] = {}
+    dropped = []
     candidate_ids = set()
     for candidate in fixture["candidates"]:
         candidate_id = candidate.get("id")
@@ -54,22 +96,14 @@ def plan(fixture: dict) -> dict:
             raise ValueError(f"Duplicate candidate ID: {candidate_id}")
         candidate_ids.add(candidate_id)
         if candidate.get("status") != "ok" or not candidate.get("source"):
-            dropped.append(candidate["id"])
+            dropped.append(candidate_id)
             continue
-        start = timestamp(candidate["start"])
-        end = start + timedelta(minutes=duration)
-        blocked_start = start - timedelta(minutes=before)
-        blocked_end = end + timedelta(minutes=after)
-        if start in seen or any(blocked_start < hi and lo < blocked_end for lo, hi in busy):
-            dropped.append(candidate["id"])
-            continue
-        seen.add(start)
-        options.append({
-            "id": candidate["id"], "start": start.isoformat(), "end": end.isoformat(),
-            "hold_start": blocked_start.isoformat(), "hold_end": blocked_end.isoformat(),
-            "source": candidate["source"],
-        })
-    options = sorted(options, key=lambda item: timestamp(item["start"]))[:3]
+        supported.append((candidate_id, timestamp(candidate["start"])))
+        sources[candidate_id] = candidate["source"]
+    options, conflicts = schedule_options(supported, duration, busy, before, after)
+    dropped.extend(conflicts)
+    for option in options:
+        option["source"] = sources[option["id"]]
     times = [f"{item['start']} to {item['end']}" for item in options]
     draft = "I can meet at one of these times:\n" + "\n".join(times) if options else ""
     return {
