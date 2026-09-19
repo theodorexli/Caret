@@ -1,12 +1,12 @@
 # Active Context
 
 ## Current Task: caret-screenpipe-history
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Intent approved: Caret launches pinned Screenpipe with clipboard storage; last-N windows (most-recently-active), minutes (all activity), and clipboard, all newest-first.
-- Complexity Level 3: complete feature across Swift launcher, pin/lease, and Python last-N. Architecture already decided in `caret-pinned-screenpipe` (Caret launches; client uses lease). Not L4.
-- Operator constraint for this run: Preflight and QA must use only Gemini 3.8 Flash and Cursor Grok High Fast. Gemini 3.8 Flash is not in the subagent model list; Cursor Grok High Fast (`cursor-grok-4.6-xhigh-fast`) is.
+- Level 3 plan written: pin clipboard flag, newest-first last-N, `history-clipboard`, Swift supervisor using `CaretProjectRoot` + attach-if-healthy.
+- Operator: do not wait for plan approval; Preflight/QA only Gemini 3.8 Flash or Cursor Grok High Fast. Gemini 3.8 Flash is unavailable — Preflight and QA use Cursor Grok High Fast.
+- Feature branch: `feat/caret-screenpipe-history`
 
 ## Next Step
-- Load the Level 3 workflow and run the Plan phase.
+- Preflight via subagent (`cursor-grok-4.6-xhigh-fast`), then Build without waiting.

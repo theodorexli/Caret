@@ -15,3 +15,16 @@ Caret.app launches and supervises pinned Screenpipe 0.4.50 with clipboard histor
 * Insights
     - `3db8f16` shipped pin + last-N client, not the Swift supervisor
     - Screenpipe 0.4.50 defaults clipboard storage off
+
+## 2026-09-19 - PLAN - COMPLETE
+
+* Work completed
+    - Mapped pin, Python last-N, CLI, and Swift supervisor
+    - Recorded attach-if-healthy, newest-first, and clipboard `input` filter
+    - Wrote TDD steps and pre-mortem
+* Decisions made
+    - No creative phase: approach is the deferred launch plus three last-N queries
+    - Operator authorized skipping plan-approval wait; archive and PR when done
+    - Preflight/QA model this run: Cursor Grok High Fast only (Gemini 3.8 Flash not in the subagent list)
+* Insights
+    - `INFOPLIST_KEY_CaretProjectRoot` already points the app at the repo root for pin and lease paths
