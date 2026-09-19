@@ -96,4 +96,18 @@ No new technology - validation not required. `launchctl` and the pinned npm CLI 
 - [x] Pre-Mortem complete
 - [x] Preflight
 - [x] Build
-- [ ] QA
+- [x] QA
+
+## QA Results
+
+**Result:** PASS
+
+Implementation matches the plan and is acceptable as-is. Advisories below do not require a Build rerun.
+
+- **KISS** — Test hooks and `nativeBinary` npm-layout walk are justified (XCTest must not call `launchctl`; `npx which` is a node shim). Not over-engineered relative to the plan.
+- **DRY** — No second launch path. Recorder is no longer a Caret `Process` child. Last-N still reads the unchanged lease.
+- **YAGNI** — `resolveBinary` falls back to version `0.4.50` if the pin omits it. Harmless; pin always has a version.
+- **Completeness** — Units 1–3 are implemented. Live check: `:3031` /health `0.4.50`, launchd parent, Screen Recording recovered. Accessibility remains a grant on that Mach-O, not a Caret-child TCC bug. `loadPin` still rejects a missing `--disable-clipboard-capture`; there is no dedicated XCTest for empty launch.
+- **Regression** — `start`/`stop` signatures, lease schema, adopt `pid` 0, and quit-must-not-kill-foreign stay. No leftover `process` property.
+- **Integrity** — Recorder `ProgramArguments` are the resolved Mach-O. Short-lived `/usr/bin/env npx … which` is resolve-only (preflight-allowed). `runCommand` throws `notHealthy` for `npx`/`launchctl` failures; `start()` already swallows errors.
+- **Documentation** — README and `techContext.md` say Caret bootstraps a launchd job that execs the pinned binary. They do not say Caret spawns `npx` as a child. `systemPatterns.md` and `productContext.md` were updated to match.
