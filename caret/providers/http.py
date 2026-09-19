@@ -22,12 +22,17 @@ class ProviderHTTPError(RuntimeError):
 
 
 MAX_ERROR_EXCERPT = 400
+USER_AGENT = "caret-core/0.1 (+https://github.com/theodorexli/hackathon-2026-09-19)"
 
 
 def post_json(url: str, payload: dict, headers: dict[str, str], timeout: float) -> dict:
     body = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(url, data=body, method="POST")
     request.add_header("Content-Type", "application/json")
+    # Cloudflare in front of api.groq.com answers 403 "error code: 1010" to the
+    # default "Python-urllib/x.y" agent (observed 2026-09-19 with a valid key).
+    # Naming the client is enough; nothing here pretends to be a browser.
+    request.add_header("User-Agent", USER_AGENT)
     for name, value in headers.items():
         request.add_header(name, value)
     try:

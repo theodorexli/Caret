@@ -8,7 +8,7 @@ per https://console.groq.com/docs/api-reference#chat-create and
 https://console.groq.com/docs/text-chat:
 
     {"model": "...", "messages": [{"role": "system"|"user", "content": "..."}],
-     "temperature": 0.2, "max_completion_tokens": 64, "stream": false}
+     "temperature": 0.2, "max_completion_tokens": 512, "stream": false}
     -> {"choices": [{"index": 0, "message": {"role": "assistant", "content": "..."},
                      "finish_reason": "stop"}], "usage": {...}}
 
@@ -58,9 +58,16 @@ class GroqWriter:
         model: str = DEFAULT_MODEL,
         endpoint: str = DEFAULT_ENDPOINT,
         timeout: float = 4.0,
-        max_completion_tokens: int = 64,
+        max_completion_tokens: int = 512,
         temperature: float = 0.2,
     ) -> None:
+        """``max_completion_tokens`` is 512, not the 64 an inline edit needs,
+        because ``openai/gpt-oss-20b`` is a reasoning model and the budget
+        covers its hidden reasoning as well as the visible text. Observed
+        2026-09-19 with a live key: at 64 every reply finished with
+        ``finish_reason="length"``, 258 reasoning characters and empty content;
+        at 512 the same prompt returned text in 0.53 s using 176 tokens. The
+        visible edit is still bounded separately by ``MAX_INLINE_UNITS``."""
         if not api_key:
             raise ProviderFailure(f"A Groq API key is required; set {API_KEY_ENV}")
         self.client = OpenAIChatClient(

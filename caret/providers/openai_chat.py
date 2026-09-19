@@ -182,6 +182,13 @@ def inline_completion(
     )
     text = trim_completion(reply.content)
     if not text:
+        if reply.finish_reason == "length":
+            # A reasoning model spent the whole budget before writing anything.
+            # Say so, because the fix is the token budget, not the prompt.
+            raise ChatError(
+                f"{client.service} hit {client.max_tokens_field}={client.max_output_tokens} "
+                f"before producing text (finish_reason=length); raise the budget for {client.model}"
+            )
         raise ChatError(f"{client.service} returned no usable completion text")
     length = utf16_length(text)
     if length > MAX_INLINE_UNITS:

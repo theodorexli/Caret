@@ -177,6 +177,14 @@ class GroqTests(unittest.TestCase):
             with self.assertRaisesRegex(ProviderFailure, "429"):
                 self.writer.complete(frame(1), "continue")
 
+    def test_an_exhausted_budget_with_no_text_names_the_budget(self):
+        body = groq_answer("")
+        body["choices"][0]["finish_reason"] = "length"
+        self.reject(body, "finish_reason=length")
+
+    def test_the_default_budget_covers_a_reasoning_model(self):
+        self.assertGreaterEqual(self.writer.client.max_output_tokens, 512)
+
     def test_a_leading_newline_is_dropped_but_a_leading_space_is_kept(self):
         with mock.patch.object(groq_module, "post_json", lambda *a, **k: groq_answer("\n the team \n")):
             self.assertEqual(self.writer.complete(frame(1), "continue"), " the team")
@@ -342,6 +350,32 @@ class CaretSplitTests(unittest.TestCase):
         described = describe_frame(self.frame)
         self.assertIn("Text before caret: 'a\U0001f30a'", described)
         self.assertIn("Text after caret: 'b'", described)
+
+
+class TransportTests(unittest.TestCase):
+    def test_every_request_names_the_client_in_its_user_agent(self):
+        from caret.providers import http as http_module
+
+        seen = {}
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return b"{}"
+
+        def fake_urlopen(request, timeout):
+            seen["ua"] = request.get_header("User-agent")
+            return FakeResponse()
+
+        with mock.patch.object(http_module.urllib.request, "urlopen", fake_urlopen):
+            http_module.post_json("https://example.invalid/x", {}, {}, 1.0)
+        self.assertTrue(seen["ua"].startswith("caret-core/"), seen["ua"])
+        self.assertNotIn("Python-urllib", seen["ua"], "the default agent is blocked by Cloudflare at api.groq.com")
 
 
 class ConfigurationTests(unittest.TestCase):
