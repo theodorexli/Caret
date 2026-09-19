@@ -1,11 +1,14 @@
 # Active Context
 
 ## Current Task: caret-screenpipe-detached-launch
-**Phase:** PREFLIGHT - COMPLETE (PASS WITH ADVISORY)
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
-- Level 2 plan: pin launch becomes `screenpipe record …`; supervisor resolves that Mach-O and bootstraps `dev.caret.hackathon.screenpipe` on `:3031`; adopt/lease unchanged; live parent+perm check in Build
-- Caret signing still out of scope
+- Pin `launch` is `screenpipe record …`; obtain stays npx metadata
+- Supervisor resolves the Developer ID Mach-O (not the node shim) and bootstraps `dev.caret.hackathon.screenpipe`
+- Live: `/health` 0.4.50, `vision_reason=ok`, screenpipe PPID 1, ProgramArguments is `@screenpipe/cli-darwin-arm64/bin/screenpipe`
+- Screen recording recovered after ~10s and captured frames. Accessibility still missing on that binary (grant `screenpipe`, not Caret)
+- Files: `caret/screenpipe_pin.json`, `tests/test_screenpipe_pin.py`, `apps/mac/Sources/Caret/ScreenpipeSupervisor.swift`, `apps/mac/Tests/ScreenpipeSupervisorTests.swift`, `README.md`, `memory-bank/techContext.md`, `memory-bank/systemPatterns.md`, `memory-bank/productContext.md`
 
 ## Next Step
-- Preflight validation
+- QA

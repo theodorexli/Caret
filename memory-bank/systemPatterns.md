@@ -8,7 +8,7 @@ At app commit `827a387`, the native UI observes focused fields/selections and sh
 
 The load-bearing assumption: anything that is not labeled sample data is rejected. Fixture output cannot silently become a real email. Live adapters, when they exist, must be an explicit change to that gate — not a leftover fixture field.
 
-Five upstreams are selected: KeyType and GhostType feed one native input system, Computer Use Jev handles native actions, Skyvern handles browser actions and Screenpipe handles history. Caret.app starts the pinned Screenpipe CLI on the pin port when that port is free. If the port is taken, it does not spawn a second recorder, and it writes a lease only after `/health` matches the pin. The other three upstreams do not run in the default starter. Changing a pin, a submodule SHA, or `.gitmodules` without the others fails the source check. Preserve upstream names, licenses and authorship.
+Five upstreams are selected: KeyType and GhostType feed one native input system, Computer Use Jev handles native actions, Skyvern handles browser actions and Screenpipe handles history. Caret.app resolves the pinned Screenpipe Mach-O and bootstraps a launchd job on the pin port when that port is free. If the port is taken, it does not spawn a second recorder, and it writes a lease only after `/health` matches the pin. The other three upstreams do not run in the default starter. Changing a pin, a submodule SHA, or `.gitmodules` without the others fails the source check. Preserve upstream names, licenses and authorship.
 
 Contributor instructions that already live in `AGENTS.md` (scope, fixtures, credentials, how to check) are not repeated here.
 

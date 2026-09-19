@@ -2,6 +2,88 @@ import Darwin
 import XCTest
 
 final class ScreenpipeSupervisorTests: XCTestCase {
+    override func tearDown() {
+        ScreenpipeSupervisor.resetTestState()
+        super.tearDown()
+    }
+
+    func testNativeBinaryPrefersMachOOverNpxShim() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let nodeModules = root.appendingPathComponent("node_modules", isDirectory: true)
+        let shimDir = nodeModules.appendingPathComponent(".bin", isDirectory: true)
+        let cliDir = nodeModules.appendingPathComponent("screenpipe/lib", isDirectory: true)
+        let native = nodeModules.appendingPathComponent("@screenpipe/cli-darwin-arm64/bin", isDirectory: true)
+        try FileManager.default.createDirectory(at: shimDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: cliDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: native, withIntermediateDirectories: true)
+        let cli = cliDir.appendingPathComponent("cli.js")
+        try "#!/usr/bin/env node\n".write(to: cli, atomically: true, encoding: .utf8)
+        let shim = shimDir.appendingPathComponent("screenpipe")
+        try FileManager.default.createSymbolicLink(at: shim, withDestinationURL: cli)
+        let macho = native.appendingPathComponent("screenpipe")
+        try Data([0xCF, 0xFA, 0xED, 0xFE]).write(to: macho)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: macho.path)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        XCTAssertEqual(
+            try ScreenpipeSupervisor.nativeBinary(fromShim: shim).path,
+            macho.path
+        )
+    }
+
+    func testProgramArgumentsUseResolvedBinaryNotNpx() {
+        let binary = URL(fileURLWithPath: "/tmp/resolved/screenpipe")
+        let args = ScreenpipeSupervisor.programArguments(
+            binary: binary,
+            launch: ["screenpipe", "record", "--port", "3031"]
+        )
+        XCTAssertEqual(args.first, binary.path)
+        XCTAssertEqual(Array(args.dropFirst()), ["record", "--port", "3031"])
+        XCTAssertFalse(args.contains("npx"))
+        XCTAssertFalse(args.contains("/usr/bin/env"))
+    }
+
+    func testLaunchdPlistUsesBinaryAndProjectRoot() {
+        let arguments = ["/tmp/resolved/screenpipe", "record", "--port", "3031"]
+        let plist = ScreenpipeSupervisor.launchdPlist(
+            label: ScreenpipeSupervisor.launchdLabel,
+            arguments: arguments,
+            workingDirectory: "/tmp/caret-root",
+            standardOut: "/tmp/caret-root/.local/screenpipe.out.log",
+            standardError: "/tmp/caret-root/.local/screenpipe.err.log"
+        )
+        XCTAssertEqual(plist["Label"] as? String, "dev.caret.hackathon.screenpipe")
+        XCTAssertEqual(plist["ProgramArguments"] as? [String], arguments)
+        XCTAssertEqual(plist["WorkingDirectory"] as? String, "/tmp/caret-root")
+    }
+
+    func testRunWritesPlistWhenPortFreeWithoutLaunchctl() throws {
+        ScreenpipeSupervisor.resolveBinaryHandler = { _ in URL(fileURLWithPath: "/usr/bin/true") }
+        var bootstrapped: URL?
+        ScreenpipeSupervisor.bootstrapHandler = { bootstrapped = $0 }
+        ScreenpipeSupervisor.healthWaitSeconds = 0.05
+        let probe = try LocalTCPListener()
+        let port = probe.port
+        probe.stop()
+        let root = try writeTempPin(port: port)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        XCTAssertThrowsError(try ScreenpipeSupervisor.run(projectRoot: root))
+        let plistURL = ScreenpipeSupervisor.launchdPlistURL(projectRoot: root)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: plistURL.path))
+        XCTAssertEqual(bootstrapped, plistURL)
+        XCTAssertTrue(ScreenpipeSupervisor.ownsJob)
+    }
+
+    func testStopClearsOwnedJob() throws {
+        var didBootout = false
+        ScreenpipeSupervisor.ownsJob = true
+        ScreenpipeSupervisor.bootoutHandler = { didBootout = true }
+        ScreenpipeSupervisor.stop()
+        XCTAssertTrue(didBootout)
+        XCTAssertFalse(ScreenpipeSupervisor.ownsJob)
+    }
+
     func testLeaseURLAndPinEndpoint() throws {
         let root = URL(fileURLWithPath: "/tmp/caret-root")
         XCTAssertEqual(

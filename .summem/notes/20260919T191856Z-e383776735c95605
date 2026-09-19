@@ -1,0 +1,1 @@
+Caret starts screenpipe@0.4.50 as launchd job dev.caret.hackathon.screenpipe on :3031; exec the cli-darwin Mach-O, not npx/node shim. TCC is that binary.

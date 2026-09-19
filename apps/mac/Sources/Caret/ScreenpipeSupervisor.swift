@@ -8,7 +8,84 @@ enum ScreenpipeSupervisorError: Error {
 }
 
 enum ScreenpipeSupervisor {
-    private static var process: Process?
+    static let launchdLabel = "dev.caret.hackathon.screenpipe"
+    static var ownsJob = false
+    static var healthWaitSeconds: TimeInterval = 60
+    static var resolveBinaryHandler: (([String: Any]) throws -> URL)?
+    static var bootstrapHandler: ((URL) throws -> Void)?
+    static var bootoutHandler: (() throws -> Void)?
+
+    static func resetTestState() {
+        ownsJob = false
+        healthWaitSeconds = 60
+        resolveBinaryHandler = nil
+        bootstrapHandler = nil
+        bootoutHandler = nil
+    }
+
+    /// `launch[0]` is the binary name; argv starts with the resolved Mach-O.
+    static func programArguments(binary: URL, launch: [String]) -> [String] {
+        [binary.path] + Array(launch.dropFirst())
+    }
+
+    static func launchdPlistURL(projectRoot: URL) -> URL {
+        projectRoot.appendingPathComponent(".local/\(launchdLabel).plist")
+    }
+
+    static func launchdPlist(
+        label: String,
+        arguments: [String],
+        workingDirectory: String,
+        standardOut: String,
+        standardError: String
+    ) -> [String: Any] {
+        [
+            "Label": label,
+            "ProgramArguments": arguments,
+            "WorkingDirectory": workingDirectory,
+            "StandardOutPath": standardOut,
+            "StandardErrorPath": standardError,
+            "RunAtLoad": true,
+            "KeepAlive": false,
+        ]
+    }
+
+    static func resolveBinary(pin: [String: Any]) throws -> URL {
+        if let resolveBinaryHandler {
+            return try resolveBinaryHandler(pin)
+        }
+        let package = pin["package"] as? String ?? "screenpipe"
+        let version = pin["version"] as? String
+            ?? pin["expected_health_version"] as? String
+            ?? "0.4.50"
+        let name = (pin["launch"] as? [String])?.first ?? "screenpipe"
+        let output = try runCommand(
+            "/usr/bin/env",
+            ["npx", "-y", "--package", "\(package)@\(version)", "which", name]
+        )
+        let path = output.split(whereSeparator: \.isNewline).first.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !path.isEmpty else { throw ScreenpipeSupervisorError.invalidPin }
+        return try nativeBinary(fromShim: URL(fileURLWithPath: path))
+    }
+
+    /// npm `which` is a node shim. TCC must see the Developer ID Mach-O.
+    static func nativeBinary(fromShim shim: URL) throws -> URL {
+        let nodeModules = shim.resolvingSymlinksInPath()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        for triple in ["cli-darwin-arm64", "cli-darwin-x64"] {
+            let candidate = nodeModules
+                .appendingPathComponent("@screenpipe")
+                .appendingPathComponent(triple)
+                .appendingPathComponent("bin")
+                .appendingPathComponent("screenpipe")
+            if FileManager.default.isExecutableFile(atPath: candidate.path) {
+                return candidate
+            }
+        }
+        throw ScreenpipeSupervisorError.invalidPin
+    }
 
     static func pinURL(projectRoot: URL) -> URL {
         projectRoot.appendingPathComponent("caret/screenpipe_pin.json")
@@ -88,8 +165,14 @@ enum ScreenpipeSupervisor {
     }
 
     static func stop() {
-        process?.terminate()
-        process = nil
+        if ownsJob {
+            if let bootoutHandler {
+                try? bootoutHandler()
+            } else {
+                _ = try? launchctl(["bootout", "gui/\(getuid())/\(launchdLabel)"])
+            }
+            ownsJob = false
+        }
     }
 
     @discardableResult
@@ -104,19 +187,32 @@ enum ScreenpipeSupervisor {
         let expectedPort = port(from: launch)
         var pid = 0
         if shouldSpawn(port: expectedPort) {
-            let child = Process()
-            child.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            child.arguments = launch
-            child.currentDirectoryURL = projectRoot
-            var environment = ProcessInfo.processInfo.environment
-            environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + (environment["PATH"] ?? "")
-            child.environment = environment
-            try child.run()
-            process = child
-            pid = Int(child.processIdentifier)
+            let binary = try resolveBinary(pin: pin)
+            let arguments = programArguments(binary: binary, launch: launch)
+            let local = projectRoot.appendingPathComponent(".local", isDirectory: true)
+            try FileManager.default.createDirectory(at: local, withIntermediateDirectories: true)
+            let plistURL = launchdPlistURL(projectRoot: projectRoot)
+            let plist = launchdPlist(
+                label: launchdLabel,
+                arguments: arguments,
+                workingDirectory: projectRoot.path,
+                standardOut: local.appendingPathComponent("screenpipe.out.log").path,
+                standardError: local.appendingPathComponent("screenpipe.err.log").path
+            )
+            let plistData = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            try plistData.write(to: plistURL)
+            ownsJob = true
+            if let bootstrapHandler {
+                try bootstrapHandler(plistURL)
+            } else {
+                try bootstrapLaunchd(plistURL: plistURL)
+            }
         }
         let endpoint = endpoint(from: launch)
         try waitForHealth(endpoint: endpoint, version: pin["expected_health_version"] as? String ?? "")
+        if ownsJob {
+            pid = jobPID() ?? 1
+        }
         let checksum = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         let payload = leasePayload(
             pin: pin,
@@ -130,8 +226,53 @@ enum ScreenpipeSupervisor {
         return lease
     }
 
+    private static func bootstrapLaunchd(plistURL: URL) throws {
+        let domain = "gui/\(getuid())"
+        _ = try? launchctl(["bootout", "\(domain)/\(launchdLabel)"])
+        try launchctl(["bootstrap", domain, plistURL.path])
+    }
+
+    private static func jobPID() -> Int? {
+        guard let printed = try? launchctl(["print", "gui/\(getuid())/\(launchdLabel)"]) else {
+            return nil
+        }
+        for line in printed.split(whereSeparator: \.isNewline) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("pid = "), let value = Int(trimmed.dropFirst(6)) {
+                return value
+            }
+        }
+        return nil
+    }
+
+    @discardableResult
+    private static func launchctl(_ arguments: [String]) throws -> String {
+        try runCommand("/bin/launchctl", arguments)
+    }
+
+    @discardableResult
+    private static func runCommand(_ executable: String, _ arguments: [String]) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + (environment["PATH"] ?? "")
+        process.environment = environment
+        let stdout = Pipe()
+        let stderr = Pipe()
+        process.standardOutput = stdout
+        process.standardError = stderr
+        try process.run()
+        process.waitUntilExit()
+        let output = String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        if process.terminationStatus != 0 {
+            throw ScreenpipeSupervisorError.notHealthy
+        }
+        return output
+    }
+
     private static func waitForHealth(endpoint: String, version: String) throws {
-        let deadline = Date().addingTimeInterval(60)
+        let deadline = Date().addingTimeInterval(healthWaitSeconds)
         while Date() < deadline {
             if let url = URL(string: endpoint + "/health"),
                let data = try? Data(contentsOf: url),

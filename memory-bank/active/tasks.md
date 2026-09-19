@@ -94,6 +94,6 @@ No new technology - validation not required. `launchctl` and the pinned npm CLI 
 - [x] Implementation plan complete
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
-- [ ] Preflight
-- [ ] Build
+- [x] Preflight
+- [x] Build
 - [ ] QA

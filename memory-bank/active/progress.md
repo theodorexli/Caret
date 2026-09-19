@@ -35,14 +35,14 @@ Change Caret’s Screenpipe start so it execs the pinned `screenpipe` binary and
 * Insights
     - Short-lived `npx --package … which` is allowed; `/usr/bin/env` + obtain tokens is not
 
-## 2026-09-19 - PREFLIGHT - COMPLETE
+## 2026-09-19 - BUILD - COMPLETE
 
 * Work completed
-    - Validated the Level 2 plan against ScreenpipeSupervisor, pin JSON, CaretTests, last-N client, and CaretApp start/stop
-    - Wrote `memory-bank/active/.preflight-status` with first line `PASS WITH ADVISORY`
+    - Direct Mach-O resolve + Caret-owned launchd job
+    - CaretTests 15 passed; Python 29 passed; `swift build` OK
+    - Live Caret start: healthy `:3031`, lease pid 79661, vision recovered and captured
 * Decisions made
-    - Plan is acceptable as-is; Build may start
-    - Did not edit tasks.md (no TDD swap or change-detector strike)
+    - `npx which` is the node shim; walk to `@screenpipe/cli-darwin-arm64/bin/screenpipe`
+    - Do not exec `obtain`
 * Insights
-    - Highest-risk misread: treating `obtain` as a Process to run before `which`, which would spawn `npx` as a Caret child again
-    - Highest-risk design bet: Caret-initiated `launchctl bootstrap` may still put Caret in the TCC chain; the planned fallback is the same path
+    - Detached launch got `screen recording: ok` and frames. Accessibility is still a grant on that Mach-O, not a Caret-child TCC bug
