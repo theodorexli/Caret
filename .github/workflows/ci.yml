@@ -25,4 +25,15 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # macos-15 defaults to Xcode 16.4 (macOS 15 SDK). glassEffect needs the
+      # macOS 26 SDK, which ships with the Xcode 26 builds already on the image.
+      - name: Select Xcode 26 SDK
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$xcode" ]; then
+            echo "Xcode 26 is required to compile glassEffect" >&2
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
       - run: swift build --package-path apps/mac

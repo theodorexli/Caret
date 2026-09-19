@@ -203,15 +203,25 @@ private struct PinnedStripCell: View {
 private extension View {
     @ViewBuilder
     func caretGlassCapsule() -> some View {
+        // `#available` is runtime-only. Xcode 16 still type-checks glassEffect
+        // and fails. The modifier exists on Swift 6.2+ / Xcode 26 SDKs.
+#if compiler(>=6.2)
         if #available(macOS 26.0, *) {
             glassEffect(.regular.interactive(), in: .capsule)
         } else {
-            background(Capsule(style: .continuous).fill(.ultraThinMaterial))
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
-                }
+            caretMaterialCapsule()
         }
+#else
+        caretMaterialCapsule()
+#endif
+    }
+
+    func caretMaterialCapsule() -> some View {
+        background(Capsule(style: .continuous).fill(.ultraThinMaterial))
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
+            }
     }
 }
 
