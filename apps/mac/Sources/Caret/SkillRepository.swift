@@ -14,19 +14,6 @@ struct CaretSkill: Identifiable, Equatable, Codable {
     }
 }
 
-enum CaretPaths {
-    static var projectRoot: URL? {
-        guard let path = Bundle.main.object(forInfoDictionaryKey: "CaretProjectRoot") as? String,
-              !path.isEmpty
-        else { return nil }
-        return URL(fileURLWithPath: path, isDirectory: true)
-    }
-
-    static var skillsRoot: URL? {
-        projectRoot?.appendingPathComponent("caret/skills", isDirectory: true)
-    }
-}
-
 struct SkillRepository {
     func listActionIDs() -> [String] {
         guard let root = CaretPaths.skillsRoot,

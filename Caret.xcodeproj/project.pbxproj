@@ -24,6 +24,9 @@
 		B10000000000000000000051 /* ScreenpipeSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000050 /* ScreenpipeSupervisor.swift */; };
 		B10000000000000000000052 /* ScreenpipeSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000050 /* ScreenpipeSupervisor.swift */; };
 		B10000000000000000000054 /* ScreenpipeSupervisorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000053 /* ScreenpipeSupervisorTests.swift */; };
+		B10000000000000000000043 /* CaretPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000044 /* CaretPaths.swift */; };
+		B10000000000000000000045 /* InstalledApps.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000046 /* InstalledApps.swift */; };
+		B10000000000000000000047 /* AppReferenceIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000048 /* AppReferenceIcon.swift */; };
 		B1000000000000000000002D /* PinnedActionsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* PinnedActionsStore.swift */; };
 		B1000000000000000000002E /* PinnedActionsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* PinnedActionsStoreTests.swift */; };
 		B10000000000000000000028 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* Assets.xcassets */; };
@@ -58,6 +61,9 @@
 		B10000000000000000000042 /* CaretNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaretNote.swift; sourceTree = "<group>"; };
 		B10000000000000000000050 /* ScreenpipeSupervisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpipeSupervisor.swift; sourceTree = "<group>"; };
 		B10000000000000000000053 /* ScreenpipeSupervisorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpipeSupervisorTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000044 /* CaretPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaretPaths.swift; sourceTree = "<group>"; };
+		B10000000000000000000046 /* InstalledApps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledApps.swift; sourceTree = "<group>"; };
+		B10000000000000000000048 /* AppReferenceIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReferenceIcon.swift; sourceTree = "<group>"; };
 		B1000000000000000000001E /* PinnedActionsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedActionsStoreTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001F /* CaretTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CaretTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -123,6 +129,9 @@
 				B10000000000000000000040 /* MemoryRepository.swift */,
 				B10000000000000000000042 /* CaretNote.swift */,
 				B10000000000000000000050 /* ScreenpipeSupervisor.swift */,
+				B10000000000000000000044 /* CaretPaths.swift */,
+				B10000000000000000000046 /* InstalledApps.swift */,
+				B10000000000000000000048 /* AppReferenceIcon.swift */,
 				B10000000000000000000018 /* Assets.xcassets */,
 			);
 			name = Caret;
@@ -282,6 +291,9 @@
 				B1000000000000000000003F /* MemoryRepository.swift in Sources */,
 				B10000000000000000000041 /* CaretNote.swift in Sources */,
 				B10000000000000000000051 /* ScreenpipeSupervisor.swift in Sources */,
+				B10000000000000000000043 /* CaretPaths.swift in Sources */,
+				B10000000000000000000045 /* InstalledApps.swift in Sources */,
+				B10000000000000000000047 /* AppReferenceIcon.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
