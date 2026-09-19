@@ -8,6 +8,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Caret",
+            exclude: ["Info.plist"],
             linkerSettings: [
                 .linkedFramework("ApplicationServices"),
             ]

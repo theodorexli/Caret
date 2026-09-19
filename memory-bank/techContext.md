@@ -13,7 +13,7 @@ Native Mac UI in Swift, local workflow core in Python 3.11+ with stdlib only, ru
 ## Build Tools
 
 - `Makefile` is the command surface: `demo`, `app`, `test`, `check`, `sources`.
-- Mac executable: `Caret.xcodeproj`, with a parallel SwiftPM package for build checks. `scripts/run_mac.py` now uses Xcode and opens `.local/build/Debug/Caret.app`. The app launches the Screenpipe pin and writes `.local/screenpipe-lease.json`; it still does not invoke the Python planner.
+- Mac executable: `Caret.xcodeproj`, with a parallel SwiftPM package for build checks. `scripts/run_mac.py` now uses Xcode and opens `.local/build/Debug/Caret.app`. On start the app launches the Screenpipe pin if port 3031 is free (otherwise it adopts the existing listener) and writes `.local/screenpipe-lease.json`. `CaretProjectRoot` in `apps/mac/Sources/Caret/Info.plist` is merged into the bundle so the supervisor, skills, memories, and notes resolve this repository. The app still does not invoke the Python planner.
 - Python is invoked as `python3 -m caret`. History commands are `history-windows`, `history-minutes`, and `history-clipboard` (newest-first). Other operations are listed by `python3 -m caret --help`.
 
 ## Testing Process

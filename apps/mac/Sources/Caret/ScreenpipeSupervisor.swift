@@ -1,4 +1,5 @@
 import CryptoKit
+import Darwin
 import Foundation
 
 enum ScreenpipeSupervisorError: Error {
@@ -26,10 +27,40 @@ enum ScreenpipeSupervisor {
     }
 
     static func endpoint(from launch: [String]) -> String {
-        if let index = launch.firstIndex(of: "--port"), launch.indices.contains(index + 1) {
-            return "http://127.0.0.1:\(launch[index + 1])"
+        "http://127.0.0.1:\(port(from: launch))"
+    }
+
+    /// Pin `--port` value, or Screenpipe's historical default.
+    static func port(from launch: [String]) -> Int {
+        if let index = launch.firstIndex(of: "--port"),
+           launch.indices.contains(index + 1),
+           let value = Int(launch[index + 1])
+        {
+            return value
         }
-        return "http://127.0.0.1:3030"
+        return 3030
+    }
+
+    /// True when something accepts a TCP connection on 127.0.0.1:`port`.
+    static func isListening(port: Int) -> Bool {
+        let fd = Darwin.socket(AF_INET, SOCK_STREAM, 0)
+        guard fd >= 0 else { return false }
+        defer { Darwin.close(fd) }
+        var addr = sockaddr_in()
+        addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
+        addr.sin_port = in_port_t(UInt16(clamping: port)).bigEndian
+        return withUnsafePointer(to: &addr) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) == 0
+            }
+        }
+    }
+
+    /// Launch the pin only when the expected port has no listener.
+    static func shouldSpawn(port: Int) -> Bool {
+        !isListening(port: port)
     }
 
     static func leasePayload(
@@ -68,15 +99,22 @@ enum ScreenpipeSupervisor {
         guard let launch = pin["launch"] as? [String], !launch.isEmpty else {
             throw ScreenpipeSupervisorError.invalidPin
         }
-        let child = Process()
-        child.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        child.arguments = launch
-        child.currentDirectoryURL = projectRoot
-        var environment = ProcessInfo.processInfo.environment
-        environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + (environment["PATH"] ?? "")
-        child.environment = environment
-        try child.run()
-        process = child
+        let lease = leaseURL(projectRoot: projectRoot)
+        try? FileManager.default.removeItem(at: lease)
+        let expectedPort = port(from: launch)
+        var pid = 0
+        if shouldSpawn(port: expectedPort) {
+            let child = Process()
+            child.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            child.arguments = launch
+            child.currentDirectoryURL = projectRoot
+            var environment = ProcessInfo.processInfo.environment
+            environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + (environment["PATH"] ?? "")
+            child.environment = environment
+            try child.run()
+            process = child
+            pid = Int(child.processIdentifier)
+        }
         let endpoint = endpoint(from: launch)
         try waitForHealth(endpoint: endpoint, version: pin["expected_health_version"] as? String ?? "")
         let checksum = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
@@ -84,10 +122,9 @@ enum ScreenpipeSupervisor {
             pin: pin,
             checksum: checksum,
             endpoint: endpoint,
-            pid: Int(child.processIdentifier),
+            pid: pid,
             readyAt: ISO8601DateFormatter().string(from: Date())
         )
-        let lease = leaseURL(projectRoot: projectRoot)
         try FileManager.default.createDirectory(at: lease.deletingLastPathComponent(), withIntermediateDirectories: true)
         try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]).write(to: lease)
         return lease

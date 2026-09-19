@@ -56,3 +56,14 @@ Caret must launch pinned Screenpipe on app start when the expected port is free,
 * Insights
     - `_require_health` in `caret/screenpipe.py` never reads `pid`, confirming sentinel `0` cannot trip the Python last-N hard-fail path
     - Advisory (non-blocking, radical innovation): a generic `PinnedServiceSupervisor` could let future upstream supervisors (KeyType, GhostType, Computer Use Jev, Skyvern) reuse the launch-if-free/adopt-if-healthy/never-kill-foreign shape instead of reimplementing it per pin
+
+## 2026-09-19 - BUILD - COMPLETE
+
+* Work completed
+    - TDD: supervisor tests red, then green (7 cases)
+    - Built Debug Caret.app; `CaretProjectRoot` expands to the repo root
+    - `make check` OK (24 Python tests); full `CaretTests` OK (11 cases)
+* Decisions made
+    - SwiftPM `exclude: ["Info.plist"]` so the Xcode-only plist is not a package resource
+* Insights
+    - `INFOPLIST_FILE` merge is what actually ships `CaretProjectRoot`; `INFOPLIST_KEY_*` does not
