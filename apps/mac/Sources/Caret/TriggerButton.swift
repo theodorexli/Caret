@@ -72,16 +72,11 @@ final class TriggerButtonController {
         }
 
         let size = panel.frame.size.width > 1 ? panel.frame.size : CaretPillMetrics.sparkleSize
-        let point = target.anchor
-        var origin = CGPoint(x: point.x + 10, y: point.y - size.height / 2)
-        var frame = CGRect(origin: origin, size: size)
-
-        if let screen = AXHelpers.screen(containing: point) {
-            if frame.maxX > screen.visibleFrame.maxX {
-                origin.x = point.x - size.width - 10
-            }
-            frame = AXHelpers.clamp(CGRect(origin: origin, size: size), to: screen.visibleFrame)
-        }
+        let frame = TriggerPlacement.frame(
+            for: target,
+            size: size,
+            visibleFrame: AXHelpers.screen(containing: target.anchor)?.visibleFrame
+        )
 
         if panel.isVisible, hypot(frame.midX - lastRect.midX, frame.midY - lastRect.midY) < 3 {
             return
@@ -262,5 +257,49 @@ struct TriggerButtonView: View {
         .accessibilityLabel("Open Caret actions")
         .help("Open Caret actions")
         .frame(width: 40, height: 40)
+    }
+}
+
+/// Where the trigger strip goes relative to what the user is doing.
+///
+/// For a selection, the strip sits just past the selection's end. That is the
+/// action-on-selection affordance and nothing else is drawn there.
+///
+/// For an input, the anchor is the caret, and the caret line is exactly where
+/// typed text and a Tab completion are drawn. Putting the strip there covered
+/// the completion, and any text after the caret, with the sparkle and pinned
+/// chips. So for an input the strip goes above the caret line. Above rather
+/// than below because compose fields commonly sit at a window's bottom edge
+/// (Messages, Slack, Mail), where below would leave the window; and the line
+/// above holds text already typed, which costs less to overlap than the line
+/// being written.
+enum TriggerPlacement {
+    static let horizontalGap: CGFloat = 10
+    static let caretGap: CGFloat = 2
+    static let lineGap: CGFloat = 6
+
+    static func frame(for target: SelectionTarget, size: CGSize, visibleFrame: CGRect?) -> CGRect {
+        let point = target.anchor
+        let caret = target.screenRect
+        // A caret always has a line height; the 1x1 mouse fallback does not.
+        let aboveCaretLine = target.kind == .input && caret.height > 2
+
+        var origin: CGPoint
+        if aboveCaretLine {
+            origin = CGPoint(x: caret.maxX + caretGap, y: caret.maxY + lineGap)
+        } else {
+            origin = CGPoint(x: point.x + horizontalGap, y: point.y - size.height / 2)
+        }
+
+        var frame = CGRect(origin: origin, size: size)
+        if let visibleFrame {
+            if frame.maxX > visibleFrame.maxX {
+                origin.x = aboveCaretLine
+                    ? caret.minX - size.width - caretGap
+                    : point.x - size.width - horizontalGap
+            }
+            frame = AXHelpers.clamp(CGRect(origin: origin, size: size), to: visibleFrame)
+        }
+        return frame
     }
 }

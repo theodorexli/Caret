@@ -20,9 +20,20 @@ final class TabInterceptMonitor {
         guard eventTap == nil else { return }
         let mask = (1 << CGEventType.keyDown.rawValue)
         let callback: CGEventTapCallBack = { _, type, event, refcon in
-            guard type == .keyDown else { return Unmanaged.passUnretained(event) }
             guard let refcon else { return Unmanaged.passUnretained(event) }
             let monitor = Unmanaged<TabInterceptMonitor>.fromOpaque(refcon).takeUnretainedValue()
+            if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                // The window server disables a tap whose callback ran long.
+                // The accept path below reads the field over AX on the main
+                // thread, which a large document can make slow, so this does
+                // happen. Without re-enabling, Tab silently stops working in
+                // every app until relaunch, which reads as "Tab works in some
+                // apps and not others".
+                if let tap = monitor.eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
+                NSLog("[Caret] Tab event tap was disabled by the system; re-enabled")
+                return Unmanaged.passUnretained(event)
+            }
+            guard type == .keyDown else { return Unmanaged.passUnretained(event) }
             guard event.getIntegerValueField(.keyboardEventKeycode) == 48 else {
                 return Unmanaged.passUnretained(event)
             }

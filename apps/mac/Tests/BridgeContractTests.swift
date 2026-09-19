@@ -142,18 +142,40 @@ final class BridgeContractTests: XCTestCase {
     /// These three are the catalog the real core returned from workflows.list
     /// on 2026-09-19. None of them is runnable, and the reason differs, so the
     /// app must not present any of them as a choice Cmd-1 can execute.
+    /// Pinned with the demo flag passed explicitly. The ambient `isExecutable`
+    /// reads ~/.config/caret/dev.json, and a rehearsal that set demoMeeting
+    /// there made this test flip -- a test must not depend on the machine.
     func testLiveCatalogEntriesAreAllUnavailable() {
         let calendarLink = offer("book-calendar-link", method: "local-sample-planner", sampleOnly: true)
-        XCTAssertFalse(calendarLink.isExecutable)
-        XCTAssertEqual(calendarLink.unavailabilityText, "Sample only. book-calendar-link has no live executor yet.")
+        XCTAssertFalse(calendarLink.isExecutable(demoMeetingEnabled: false))
+        XCTAssertEqual(calendarLink.unavailabilityText(demoMeetingEnabled: false),
+                       "Sample only. book-calendar-link has no live executor yet.")
 
         // The one a non-empty check would have got wrong.
         let flight = offer("book-flight", method: "unwired", sampleOnly: false)
-        XCTAssertFalse(flight.isExecutable, "\"unwired\" names the absence of an executor")
-        XCTAssertEqual(flight.unavailabilityText, "book-flight is described but not wired to an executor yet.")
+        XCTAssertFalse(flight.isExecutable(demoMeetingEnabled: false), "\"unwired\" names the absence of an executor")
+        XCTAssertEqual(flight.unavailabilityText(demoMeetingEnabled: false),
+                       "book-flight is described but not wired to an executor yet.")
 
         let revise = offer("revise", method: "unwired", sampleOnly: false)
-        XCTAssertFalse(revise.isExecutable)
+        XCTAssertFalse(revise.isExecutable(demoMeetingEnabled: false))
+    }
+
+    /// The demo flag admits exactly one entry, the local sample planner under
+    /// book-calendar-link, and nothing else that is sample-only.
+    func testDemoFlagAdmitsOnlyTheLocalMeetingSample() {
+        let planner = offer("book-calendar-link", method: "local-sample-planner", sampleOnly: true)
+        XCTAssertTrue(planner.isExecutable(demoMeetingEnabled: true))
+        XCTAssertNil(planner.unavailabilityText(demoMeetingEnabled: true))
+
+        let otherSample = offer("book-calendar-link", method: "some-other-sample", sampleOnly: true)
+        XCTAssertFalse(otherSample.isExecutable(demoMeetingEnabled: true),
+                       "a different sample method must not ride in on the demo flag")
+        XCTAssertNotNil(otherSample.unavailabilityText(demoMeetingEnabled: true))
+
+        let otherWorkflow = offer("revise", method: "local-sample-planner", sampleOnly: true)
+        XCTAssertFalse(otherWorkflow.isExecutable(demoMeetingEnabled: true),
+                       "a different workflow id must not ride in on the demo flag")
     }
 
     func testPlaceholderMethodIsCaseAndWhitespaceInsensitive() {

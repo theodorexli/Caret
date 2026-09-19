@@ -97,8 +97,16 @@ struct CaretActionOffer: Identifiable, Equatable {
     }
 
     var unavailabilityText: String? {
+        unavailabilityText(demoMeetingEnabled: CoreLaunchSettings.demoMeetingEnabled)
+    }
+
+    /// Explicit-input form, mirroring `isExecutable(demoMeetingEnabled:)`, so
+    /// the rule can be tested without depending on whatever dev.json the
+    /// machine happens to have. The ambient property above reads the real
+    /// flag at runtime.
+    func unavailabilityText(demoMeetingEnabled: Bool) -> String? {
         let method = executionMethod.trimmingCharacters(in: .whitespaces).lowercased()
-        if sampleOnly && !(isLocalMeetingDemo && CoreLaunchSettings.demoMeetingEnabled) {
+        if sampleOnly && !(isLocalMeetingDemo && demoMeetingEnabled) {
             return "Sample only. \(displayTitle) has no live executor yet."
         }
         if method.isEmpty || Self.placeholderExecutionMethods.contains(method) {

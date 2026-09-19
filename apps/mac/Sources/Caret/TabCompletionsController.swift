@@ -22,22 +22,36 @@ final class TabCompletionsController {
     private let ghostPanel = InlineGhostPanel()
     private var offer: Offer?
     private var fetchTask: Task<Void, Never>?
+    private var lastGateReport: String?
+
+    /// Names the gate that refused an offer, or the presentation chosen, once
+    /// per change, so "Tab does nothing in app X" can be read off the log.
+    /// App name and AX role only; the field's text never appears here.
+    private func report(_ what: String, target: SelectionTarget?) {
+        let line = "\(what) app=\(target?.sourceApp ?? "-") role=\(target?.axRole ?? "-")/\(target?.axSubrole ?? "-")"
+        guard line != lastGateReport else { return }
+        lastGateReport = line
+        NSLog("[Caret] tab: %@", line)
+    }
     private var lastPresentedSuffix: String?
 
     private let debounceNs: UInt64 = 550_000_000
 
     func update(target: SelectionTarget?) {
         guard AXHelpers.isTrusted() else {
+            report("refused=accessibility-not-trusted", target: target)
             clearOffer()
             return
         }
         guard let target, target.kind == .input else {
+            report("refused=no-input-target", target: target)
             clearOffer()
             return
         }
 
         let config = configuration()
         if isExcluded(appName: target.sourceApp, excluded: config.excludedApps) {
+            report("refused=app-excluded", target: target)
             clearOffer()
             return
         }
@@ -45,6 +59,7 @@ final class TabCompletionsController {
         let captured = TypingPrefixCapture.shared.capturedPrefix(for: target)
         let prefix = target.effectivePrefix(captured: captured)
         guard prefix.count >= TabCompletions.minimumTypedCharacters else {
+            report("refused=prefix-short len=\(prefix.count) ax=\(target.fieldContext != nil)", target: target)
             clearOffer()
             return
         }
@@ -110,6 +125,7 @@ final class TabCompletionsController {
             }
             presentInlineOffer(suffix: suffix, processID: processID, anchor: anchor)
         } catch CaretCLI.Error.missingProjectRoot {
+            report("refused=missing-project-root", target: nil)
             clearOffer()
         } catch {
             NSLog("[Caret] Tab completion failed: %@", String(describing: error))
@@ -121,11 +137,13 @@ final class TabCompletionsController {
         guard let app = NSRunningApplication(processIdentifier: processID),
               app.processIdentifier == NSWorkspace.shared.frontmostApplication?.processIdentifier
         else {
+            report("refused=not-frontmost", target: nil)
             clearOffer()
             return
         }
 
         let element = AXHelpers.focusedTextElement(in: app)
+        report(element == nil ? "present=no-editable-element" : "present=element-found", target: nil)
         let caretAnchor = element.flatMap { AXHelpers.caretBounds($0) } ?? anchor
 
         if offer?.suffix == suffix, lastPresentedSuffix == suffix {
@@ -141,6 +159,7 @@ final class TabCompletionsController {
            let insertedRange = AXHelpers.insertInlineSuggestion(element, suffix: suffix)
         {
             ghostPanel.hide()
+            report("present=inline-selection", target: nil)
             offer = Offer(
                 suffix: suffix,
                 presentation: .inlineSelection(insertedRange),
@@ -155,6 +174,7 @@ final class TabCompletionsController {
             return
         }
 
+        report("present=ghost-overlay", target: nil)
         ghostPanel.show(suffix: suffix, near: caretAnchor)
         offer = Offer(
             suffix: suffix,

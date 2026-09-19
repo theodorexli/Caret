@@ -330,6 +330,32 @@ enum AXHelpers {
         guard let range = selectedTextRange(element) else { return false }
 
         let insertLocation = range.location + range.length
+        let textLength = (text as NSString).length
+
+        // Preferred path: replace a collapsed selection through
+        // kAXSelectedText. That is the app's own editing path, so it keeps the
+        // undo group and text attributes, and NSTextView, WebKit and Chromium
+        // fields all honor it. The kAXValue fallbacks below replace the whole
+        // field instead, which many native views refuse or mishandle; that is
+        // why the same offer appeared in Messages and not in other apps.
+        //
+        // Read back rather than trusted: an AX set can report success and
+        // change nothing. If it reports success but the field shows no
+        // insertion, stop here and do not also set the whole value, which
+        // could insert twice if the app applied the first set late.
+        if setSelectedTextRange(element, range: NSRange(location: insertLocation, length: 0)) {
+            let set = AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFTypeRef)
+            if set == .success {
+                let inserted = valueForRange(element, range: NSRange(location: insertLocation, length: textLength))
+                let advanced = selectedTextRange(element).map { $0.location == insertLocation + textLength } ?? false
+                if inserted == text || (inserted == nil && advanced) {
+                    setSelectedTextRange(element, range: NSRange(location: insertLocation + textLength, length: 0))
+                    return true
+                }
+                return false
+            }
+        }
+
         if let value = fieldValue(element) {
             let nsValue = value as NSString
             let safeInsert = min(insertLocation, nsValue.length)
@@ -376,8 +402,29 @@ enum AXHelpers {
         let insertLocation = range.location + range.length
         guard insertAtCaret(element, text: suffix) else { return nil }
         let suffixRange = NSRange(location: insertLocation, length: (suffix as NSString).length)
-        guard setSelectedTextRange(element, range: suffixRange) else { return suffixRange }
+        guard setSelectedTextRange(element, range: suffixRange) else {
+            // The suffix is in the field but not selected, so the next
+            // keystroke would keep it instead of replacing it: text the user
+            // never accepted. Take it back out and let the overlay present.
+            deleteRange(element, range: suffixRange)
+            return nil
+        }
         return suffixRange
+    }
+
+    /// Removes `range` through the editing path first (select it, replace the
+    /// selection with nothing), falling back to a whole-value rewrite only when
+    /// the app does not honor that.
+    @discardableResult
+    static func deleteRange(_ element: AXUIElement, range: NSRange) -> Bool {
+        if setSelectedTextRange(element, range: range),
+           AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, "" as CFTypeRef) == .success,
+           let after = selectedTextRange(element),
+           after.location == range.location, after.length == 0
+        {
+            return true
+        }
+        return removeRange(element, range: range)
     }
 
     @discardableResult
