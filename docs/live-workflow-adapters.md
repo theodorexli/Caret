@@ -124,11 +124,12 @@ implementation goes once an enforcing capability exists.
 
 ## Registration
 
-Both classes take no constructor arguments. The following is the agreed integration
-hook, not a runnable command on this branch. The core owner must first land
-`caret.bridge` and its `--adapter` loader; the inspected reference bridge does not
-yet accept this flag. Alternatively its owner can explicitly register the instances
-returned by `caret.live_workflows.actions.adapters()`.
+Both classes take no constructor arguments. The core branch at `b86d1bb` supplies
+`caret.bridge` and the repeatable `--adapter` loader. Integrate that core before
+running the command below; this adapter-only branch does not contain it.
+An explicit adapter replaces the built-in with the same ID and logs that replacement.
+Do not enable `MeetingDraftWorkflow` during the synthetic local-hold demo: it would
+replace `local-sample-planner` with draft-only behavior.
 
 
 ```sh
