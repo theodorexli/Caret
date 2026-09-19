@@ -1,61 +1,27 @@
 import AppKit
-import SwiftUI
+import CompletionUI
 
+/// KeyType's pinned renderer is shared unchanged; Caret owns offer acceptance.
 @MainActor
 final class InlineGhostPanel {
-    private let panel: NSPanel
-    private let label = NSTextField(labelWithString: "")
+    private let overlay = GhostTextOverlayWindow()
 
-    init() {
-        panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 320, height: 28),
-            styleMask: [.nonactivatingPanel, .borderless],
-            backing: .buffered,
-            defer: false
+    func show(suffix: String, near anchor: CGRect) -> Bool {
+        // AX can return the whole field when caret bounds are unavailable.
+        // A completion at that field's edge would not be a visible inline offer.
+        guard anchor.width <= 4, anchor.height > 0, anchor.height <= 80,
+              let screen = NSScreen.screens.first(where: { $0.visibleFrame.contains(anchor.origin) })
+        else { overlay.hide(); return false }
+        overlay.show(
+            text: suffix,
+            font: .systemFont(ofSize: min(max(anchor.height * 0.75, 11), 24)),
+            placement: OverlayPlacement(cursorRect: anchor, fieldRect: screen.visibleFrame),
+            textColor: .secondaryLabelColor
         )
-        panel.isReleasedWhenClosed = false
-        panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)) + 1)
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        panel.backgroundColor = .clear
-        panel.isOpaque = false
-        panel.hasShadow = false
-        panel.hidesOnDeactivate = false
-
-        label.font = .systemFont(ofSize: 14, weight: .regular)
-        label.textColor = NSColor.secondaryLabelColor.withAlphaComponent(0.85)
-        label.lineBreakMode = .byTruncatingTail
-        label.maximumNumberOfLines = 1
-        label.translatesAutoresizingMaskIntoConstraints = false
-
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 28))
-        container.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 4),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -4),
-            label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-        ])
-        panel.contentView = container
-    }
-
-    func show(suffix: String, near anchor: CGRect) {
-        label.stringValue = suffix
-        label.sizeToFit()
-        let width = min(max(label.intrinsicContentSize.width + 12, 40), 420)
-        let height: CGFloat = 26
-        var origin = CGPoint(x: anchor.maxX + 2, y: anchor.midY - height / 2)
-        if let screen = AXHelpers.screen(containing: origin) {
-            let visible = screen.visibleFrame
-            if origin.x + width > visible.maxX - 8 {
-                origin.x = anchor.minX - width - 2
-            }
-            origin.x = min(max(origin.x, visible.minX + 8), visible.maxX - width - 8)
-            origin.y = min(max(origin.y, visible.minY + 8), visible.maxY - height - 8)
-        }
-        panel.setFrame(NSRect(origin: origin, size: NSSize(width: width, height: height)), display: true)
-        panel.orderFrontRegardless()
+        return overlay.isVisible
     }
 
     func hide() {
-        panel.orderOut(nil)
+        overlay.hide()
     }
 }

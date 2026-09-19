@@ -1,0 +1,49 @@
+name: Release Caret.dmg
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  dmg:
+    name: Build and publish DMG
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Fetch pinned KeyType UI dependency
+        run: git submodule update --init --depth 1 packages/keytype
+
+      - name: Report toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Build Caret.dmg
+        run: python3 scripts/package_mac.py --dmg --release
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Caret.dmg
+          body: |
+            Drag **Caret.app** into **Applications**. The build is ad-hoc signed (not notarized).
+
+            If macOS says Caret is damaged, clear quarantine and open again:
+
+            ```sh
+            xattr -dr com.apple.quarantine /Applications/Caret.app
+            open /Applications/Caret.app
+            ```
+
+            For Python gateway / Tab AI, clone the repo and set `~/.config/caret/dev.json` `"root"` to that path (or `CARET_PROJECT_ROOT`).
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/') }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('caret-dmg-{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('Caret DMG build {0}', github.run_number) }}

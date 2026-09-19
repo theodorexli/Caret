@@ -570,24 +570,28 @@ final class Model: ObservableObject {
 }
 
 enum ActionsMenuMetrics {
-    static let rowHeight: CGFloat = 32
-    static let rowHeightWithSubtitle: CGFloat = 46
-    static let maxVisibleRows: CGFloat = 8
+    static let panelCornerRadius: CGFloat = 12
+    static let rowCornerRadius: CGFloat = 8
+    static let panelInset: CGFloat = 12
+    static let rowHeight: CGFloat = 34
+    static let rowHeightWithSubtitle: CGFloat = 48
+    static let rowSpacing: CGFloat = 2
     static let width: CGFloat = 300
     static let gatewayWidth: CGFloat = 400
     static let gatewayMinHeight: CGFloat = 300
     /// Fixed floating-panel height for gateway skills (header + scroll body).
     static let gatewayPanelHeight: CGFloat = gatewayMinHeight + 24
-    /// Default height for the action browse palette (search + action list).
-    static let browsePanelMinHeight: CGFloat = 280
+    /// Browse palette: search header + scrollable list (must match NSPanel frame).
+    static let browsePanelHeight: CGFloat = 340
+    static let browseSearchBlockHeight: CGFloat = 52
     static let gatewayHeaderHeight: CGFloat = 50
     static let gatewayBodyPadding: CGFloat = 14
     static var gatewayBodyHeight: CGFloat {
         gatewayPanelHeight - gatewayHeaderHeight - (gatewayBodyPadding * 2)
     }
 
-    static var maxScrollHeight: CGFloat {
-        rowHeightWithSubtitle * maxVisibleRows + 8
+    static var browseListHeight: CGFloat {
+        browsePanelHeight - browseSearchBlockHeight - 1
     }
 }
 
@@ -627,11 +631,12 @@ struct SkillPickerView: View {
         }
         .frame(width: panelWidth, alignment: .topLeading)
         .modifier(GatewayPanelSizing(isGateway: gatewayScopedAction != nil))
+        .clipShape(RoundedRectangle(cornerRadius: ActionsMenuMetrics.panelCornerRadius, style: .continuous))
     }
 
     private var browsePanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 if let action = model.scopedAction {
                     Button {
                         model.clearPanelScope()
@@ -668,7 +673,7 @@ struct SkillPickerView: View {
 
                 if !model.actionOffers.isEmpty {
                     ScrollView(.vertical, showsIndicators: true) {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 6) {
                             ForEach(model.actionOffers) { offer in
                                 CaretActionOfferRow(offer: offer) {
                                     model.runOfferedAction(offer)
@@ -676,18 +681,17 @@ struct SkillPickerView: View {
                             }
                         }
                     }
-                    // Keep evidence scrollable without pushing the action menu off screen.
-                    .frame(maxHeight: 220)
+                    .frame(maxHeight: 120)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
+            .padding(.horizontal, ActionsMenuMetrics.panelInset)
+            .padding(.top, ActionsMenuMetrics.panelInset)
+            .padding(.bottom, 10)
 
             Divider().opacity(0.35)
 
             ScrollView(.vertical, showsIndicators: true) {
-                LazyVStack(alignment: .leading, spacing: 0) {
+                LazyVStack(alignment: .leading, spacing: ActionsMenuMetrics.rowSpacing) {
                     if model.scopedAction == nil {
                         if model.settingsMatchesSearch {
                             SkillRow(title: "Settings", subtitle: "Accessibility and Caret", accent: false) {
@@ -736,11 +740,12 @@ struct SkillPickerView: View {
                         }
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 6)
             }
-            .frame(maxHeight: ActionsMenuMetrics.maxScrollHeight)
+            .frame(height: ActionsMenuMetrics.browseListHeight, alignment: .topLeading)
         }
-        .frame(width: ActionsMenuMetrics.width)
+        .frame(width: ActionsMenuMetrics.width, height: ActionsMenuMetrics.browsePanelHeight, alignment: .topLeading)
         .onAppear {
             searchFocused = true
         }
@@ -759,7 +764,8 @@ private struct GatewayPanelSizing: ViewModifier {
             content
                 .frame(height: ActionsMenuMetrics.gatewayPanelHeight, alignment: .topLeading)
         } else {
-            content.fixedSize(horizontal: true, vertical: true)
+            content
+                .frame(height: ActionsMenuMetrics.browsePanelHeight, alignment: .topLeading)
         }
     }
 }
@@ -798,7 +804,7 @@ private struct GatewayActionPanel: View {
             height: ActionsMenuMetrics.gatewayPanelHeight,
             alignment: .topLeading
         )
-        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: ActionsMenuMetrics.panelCornerRadius, style: .continuous))
     }
 
     private var header: some View {
@@ -898,10 +904,10 @@ private struct PanelSearchField: View {
                 .help("Settings")
             }
         }
-        .padding(.leading, 8)
-        .padding(.trailing, 4)
-        .padding(.vertical, 5)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .padding(.leading, 10)
+        .padding(.trailing, 6)
+        .padding(.vertical, 7)
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: ActionsMenuMetrics.rowCornerRadius, style: .continuous))
     }
 }
 
@@ -957,9 +963,9 @@ private struct ActionRow: View {
                             .monospacedDigit()
                     }
                 }
-                .padding(.leading, 12)
+                .padding(.leading, 10)
                 .padding(.trailing, 8)
-                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: ActionsMenuMetrics.rowHeight - 6, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -977,12 +983,11 @@ private struct ActionRow: View {
                 .padding(.trailing, 6)
             }
         }
-        .padding(.trailing, isPinned || canPin ? 0 : 6)
+        .padding(.trailing, isPinned || canPin ? 2 : 4)
         .frame(height: ActionsMenuMetrics.rowHeight)
-        .padding(.horizontal, 6)
         .background {
             if isHovered {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                RoundedRectangle(cornerRadius: ActionsMenuMetrics.rowCornerRadius, style: .continuous)
                     .fill(Color.primary.opacity(0.08))
             }
         }
@@ -1021,16 +1026,15 @@ private struct SkillRow: View {
                 Spacer(minLength: 0)
             }
             .padding(.leading, accent ? 10 : 12)
-            .padding(.trailing, 10)
-            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+            .padding(.trailing, 12)
+            .frame(maxWidth: .infinity, minHeight: ActionsMenuMetrics.rowHeight - 6, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .frame(height: subtitle.isEmpty ? ActionsMenuMetrics.rowHeight : ActionsMenuMetrics.rowHeightWithSubtitle)
-        .padding(.horizontal, 6)
         .background {
             if isHovered {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                RoundedRectangle(cornerRadius: ActionsMenuMetrics.rowCornerRadius, style: .continuous)
                     .fill(Color.primary.opacity(accent ? 0.12 : 0.08))
             }
         }
@@ -1045,14 +1049,19 @@ final class CaretPanel: NSPanel {
     func present(
         at point: CGPoint,
         width: CGFloat = ActionsMenuMetrics.width,
-        height: CGFloat = ActionsMenuMetrics.browsePanelMinHeight,
+        height: CGFloat = ActionsMenuMetrics.browsePanelHeight,
         makeKey: Bool = true
     ) {
-        setFrame(frame(near: point, width: width, height: height), display: true)
+        setFrame(near: point, width: width, height: height)
         orderFrontRegardless()
         if makeKey {
             self.makeKey()
         }
+    }
+
+    /// Resize an already-visible panel without re-keying Caret (keeps host focus for Tab completions).
+    func setFrame(near point: CGPoint, width: CGFloat, height: CGFloat) {
+        setFrame(frame(near: point, width: width, height: height), display: true)
     }
 
     private func frame(near point: CGPoint, width: CGFloat, height: CGFloat) -> NSRect {
@@ -1079,7 +1088,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var model: Model?
     private var trustTimer: Timer?
     private var lastTarget: SelectionTarget?
-    /// Last target that still had selected text (kept after Caret steals focus).
+    /// Selection or input captured when the panel opens, before Caret becomes frontmost.
+    private var panelContextTarget: SelectionTarget?
     private var lastPanelPoint: CGPoint = NSEvent.mouseLocation
     private var clickMonitor: Any?
     private var escapeMonitor: Any?
@@ -1166,13 +1176,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         let hosting = NSHostingView(
             rootView: SkillPickerView(model: model)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: ActionsMenuMetrics.panelCornerRadius, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
+                    RoundedRectangle(cornerRadius: ActionsMenuMetrics.panelCornerRadius, style: .continuous)
+                        .strokeBorder(.primary.opacity(0.1), lineWidth: 0.5)
                 }
+                .clipShape(RoundedRectangle(cornerRadius: ActionsMenuMetrics.panelCornerRadius, style: .continuous))
         )
-        hosting.sizingOptions = [.intrinsicContentSize]
+        hosting.sizingOptions = []
         panel.contentView = hosting
         self.panel = panel
 
@@ -1238,18 +1249,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         monitor.onChange = { [weak self] target in
-            Task { @MainActor in
-                guard let self, let model = self.model else { return }
-                self.lastTarget = target
-                model.selectedText = target?.selectedText ?? ""
-                model.sourceApp = target?.sourceApp
-                if self.panel?.isVisible == true {
-                    self.tabCompletions.clearOffer()
-                    self.trigger.hide()
-                } else {
-                    self.tabCompletions.update(target: target)
-                    self.trigger.update(target: target)
-                }
+            guard let self, let model = self.model else { return }
+            self.lastTarget = target
+            model.selectedText = target?.selectedText ?? ""
+            model.sourceApp = target?.sourceApp
+            if self.panel?.isVisible == true {
+                self.tabCompletions.clearOffer()
+                self.trigger.hide()
+            } else {
+                self.tabCompletions.update(target: target)
+                self.trigger.update(target: target)
             }
         }
 
@@ -1362,8 +1371,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    /// Live AX snapshot only — no sticky selection from earlier actions.
     private func freshTargetForGatewayAction() -> SelectionTarget? {
+        if panel?.isVisible == true,
+           let panelContextTarget,
+           SkillActionRunner.hasInput(panelContextTarget) {
+            return panelContextTarget
+        }
         monitor.refreshNow()
         guard let target = lastTarget, SkillActionRunner.hasInput(target) else { return nil }
         return target
@@ -1374,19 +1387,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if isGateway {
             return (ActionsMenuMetrics.gatewayWidth, ActionsMenuMetrics.gatewayPanelHeight)
         }
-        return (ActionsMenuMetrics.width, ActionsMenuMetrics.browsePanelMinHeight)
+        return (ActionsMenuMetrics.width, ActionsMenuMetrics.browsePanelHeight)
     }
 
     private func resyncVisiblePanelFrame() {
         guard panel?.isVisible == true else { return }
         let scopedActionID = model?.scopedActionID
         let dimensions = Self.panelDimensions(scopedActionID: scopedActionID)
-        let stealsFocus = scopedActionID.map { GatewaySkillActions.contains($0) } != true
-        panel?.present(
-            at: lastPanelPoint,
+        panel?.setFrame(
+            near: lastPanelPoint,
             width: dimensions.width,
-            height: dimensions.height,
-            makeKey: stealsFocus
+            height: dimensions.height
         )
     }
 
@@ -1400,6 +1411,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             )
         }
         lastPanelPoint = point
+        if let target = lastTarget, SkillActionRunner.hasInput(target) {
+            panelContextTarget = target
+        }
         model?.preparePanel(scopedActionID: scopedActionID)
         trigger.hide()
         // Pause before presenting: presenting makes Caret frontmost, and the
@@ -1432,7 +1446,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel?.resignKey()
         removeClickOutside()
         model?.clearPanelScope()
+        panelContextTarget = nil
         restoreTypingAppFocus()
+        monitor.refreshNow()
         trigger.update(target: lastTarget)
         tabCompletions.update(target: lastTarget)
     }
@@ -1601,6 +1617,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 guard let self, self.panel?.isVisible != true else { return }
                 self.monitor.refreshNow()
                 self.tabCompletions.update(target: self.lastTarget)
+                self.trigger.update(target: self.lastTarget)
             }
         }
         TypingPrefixCapture.shared.start()

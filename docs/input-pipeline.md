@@ -6,11 +6,13 @@ This is the approved implementation contract for the input, UI, workflow and con
 
 | Package | Responsibility | Integration boundary |
 | --- | --- | --- |
-| `keytype` | Inline autocomplete, caret geometry, text insertion | Reuse selected native components inside Caret |
+| `keytype` | Inline autocomplete, caret geometry, text insertion | Direct local Swift package dependency on pinned `CompletionUI`; `InlineGhostPanel` wraps upstream `GhostTextOverlayWindow` |
 | `ghosttype` | Reference for the second text interaction mode | Merge useful components into the same app; Teddy's hoverable is the action UI |
 | `computer-use-jev` | Jev-driven native Mac actions | Adapt its persistent Swift Accessibility worker and typed decisions |
 | `skyvern` | Browser control | The only browser execution engine |
 | `screenpipe` | Computer history and context retrieval | Owned by the existing context teammate; keep its current pin |
+
+The autocomplete preview is KeyType's unchanged `CompletionUI` package, linked by both SwiftPM and Xcode. `TabCompletionsController` adapts Caret's model output to that renderer and owns the sole Tab handler. Never implement a preview by inserting and selecting text in the host field: refreshes and failed selection can leave unaccepted text behind. Showing or dismissing an offer must not write to the document. Acceptance requires the original AX element, full value, collapsed selection, process and caret geometry to still match; inaccessible fields abstain.
 
 GhostType upstream is itself an autocomplete app. "GhostType mode" in this product means the action hoverable; it does not mean its upstream already implements workflows. Do not run KeyType and GhostType as two apps or install their event taps independently. Caret owns one focus tracker, one suggestion state and one keyboard acceptance path.
 

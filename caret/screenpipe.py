@@ -13,6 +13,7 @@ from pathlib import Path
 
 PIN_PATH = Path(__file__).with_name("screenpipe_pin.json")
 DEFAULT_LEASE_PATH = Path(".local/screenpipe-lease.json")
+DEBUG_WINDOW_TITLE = "Caret Debug"  # matches AppDelegate.showDebugWindow
 
 # AppKit NSAccessibility.Role.description(with:) plus Screenpipe OCR "block".
 ROLE_LABELS = {
@@ -212,17 +213,22 @@ def last_n_windows(
     count: int,
     lease_path: Path | None = None,
     include_structure: bool = True,
+    skip_titles: set[str] | None = None,
 ) -> dict:
     if count < 1:
         raise ValueError("windows must be >= 1")
     lease = load_lease(lease_path)
     _require_health(lease)
+    skip = {title.strip() for title in (skip_titles or set())}
     payload = _api(lease, "/search", {"limit": 200, "content_type": "all", "order": "descending"})
     seen = []
     keys = set()
     for item in payload.get("data") or []:
         content = item.get("content") or {}
-        key = ((content.get("app_name") or "").strip(), (content.get("window_name") or "").strip())
+        title = (content.get("window_name") or "").strip()
+        if title in skip:
+            continue
+        key = ((content.get("app_name") or "").strip(), title)
         if not any(key) or key in keys:
             continue
         keys.add(key)
@@ -253,7 +259,7 @@ def _snippet(record: dict, snippet_chars: int) -> dict:
 def debug_preview(lease_path: Path | None = None, n: int = 2, snippet_chars: int = 80) -> dict:
     """Last-n snippets of windows, minutes, and clipboard. Per-slice errors stay in the payload."""
     loaders = (
-        ("windows", lambda: last_n_windows(n, lease_path, include_structure=False)),
+        ("windows", lambda: last_n_windows(n, lease_path, include_structure=False, skip_titles={DEBUG_WINDOW_TITLE})),
         ("minutes", lambda: last_n_minutes(n, lease_path, include_structure=False, record_cap=n)),
         ("clipboard", lambda: last_n_clipboard(n, lease_path)),
     )

@@ -9,6 +9,6 @@ Add numbered or bulleted lines to define exact Tab completions (prefix match, ca
 
 1. please pull github and rebase and push to github
 
-Tab completions activate after **5 or more characters** before the caret. The rest of the line is inserted inside your field (selected); press **Tab** to accept.
+Tab completions activate after **5 or more characters** before the caret. The suggestion appears as a gray preview without changing your text. Press **Tab** to insert it, or keep typing to dismiss it.
 
 When no patterns match, a model continuation may appear after the same threshold.

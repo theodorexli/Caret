@@ -9,7 +9,56 @@ enum CaretPillMetrics {
     static let stripCornerRadius: CGFloat = clusterHeight / 2
 }
 
+enum TriggerButtonPlacement {
+    /// Tight rect the sparkle cluster sits beside (caret or selection).
+    static func anchorRect(for target: SelectionTarget) -> CGRect {
+        target.screenRect.standardized
+    }
+
+    /// Region that must stay uncovered by the cluster (usually just the caret line).
+    static func avoidRect(for target: SelectionTarget, fieldFrame: CGRect?, anchor: CGRect) -> CGRect {
+        guard target.kind == .input, let field = fieldFrame?.standardized else {
+            return anchor.insetBy(dx: -8, dy: -8)
+        }
+        let insideField = field.insetBy(dx: -24, dy: -24).contains(anchor)
+        if anchor.width <= 4, insideField {
+            return field
+        }
+        return anchor.insetBy(dx: -8, dy: -8)
+    }
+}
+
 enum TriggerButtonGeometry {
+    /// Places the cluster beside `anchor`, preferring the right edge then the left.
+    static func frame(adjacentTo anchor: CGRect, size: CGSize, visibleFrame: CGRect, gap: CGFloat = 6) -> CGRect {
+        let padded = anchor.insetBy(dx: -8, dy: -8)
+        let candidates = [
+            CGPoint(x: anchor.maxX + gap, y: anchor.midY - size.height / 2),
+            CGPoint(x: anchor.minX - size.width - gap, y: anchor.midY - size.height / 2),
+            CGPoint(x: anchor.maxX + gap, y: anchor.minY - size.height - gap),
+            CGPoint(x: anchor.maxX + gap, y: anchor.maxY + gap),
+        ]
+        for origin in candidates {
+            let clamped = CGPoint(
+                x: min(max(origin.x, visibleFrame.minX), visibleFrame.maxX - size.width),
+                y: min(max(origin.y, visibleFrame.minY), visibleFrame.maxY - size.height)
+            )
+            let frame = CGRect(origin: clamped, size: size)
+            if !frame.intersects(padded) {
+                return frame
+            }
+        }
+        var fallback = CGRect(
+            x: min(anchor.maxX + gap, visibleFrame.maxX - size.width),
+            y: anchor.midY - size.height / 2,
+            width: size.width,
+            height: size.height
+        )
+        fallback.origin.x = min(max(fallback.origin.x, visibleFrame.minX), visibleFrame.maxX - size.width)
+        fallback.origin.y = min(max(fallback.origin.y, visibleFrame.minY), visibleFrame.maxY - size.height)
+        return fallback
+    }
+
     static func frame(avoiding textRect: CGRect, size: CGSize, visibleFrame: CGRect) -> CGRect? {
         guard !textRect.isNull, !textRect.isInfinite,
               size.width > 0, size.height > 0,
@@ -95,37 +144,51 @@ final class TriggerButtonController {
 
         lastTarget = target
         let size = panel.frame.size.width > 1 ? panel.frame.size : CaretPillMetrics.sparkleSize
-        var protected = target.screenRect
-        var hasFieldBounds = false
-        // A caret can be zero-width. Its mouse fallback is not a safe placement anchor.
-        // The focused field also reserves space for text and selected inline completions.
-        if let app = NSWorkspace.shared.frontmostApplication,
-           app.processIdentifier == target.focusedProcessID,
-           let element = AXHelpers.focusedTextElement(in: app),
-           let field = AXHelpers.frame(element) {
-            protected = protected.union(field)
-            hasFieldBounds = true
+        let fieldFrame: CGRect? = {
+            guard let app = NSWorkspace.shared.frontmostApplication,
+                  app.processIdentifier == target.focusedProcessID,
+                  let element = AXHelpers.focusedTextElement(in: app)
+            else { return nil }
+            return AXHelpers.frame(element)
+        }()
+        var anchor = TriggerButtonPlacement.anchorRect(for: target)
+        if anchor.width <= 2, anchor.height <= 2 {
+            anchor = CGRect(
+                x: target.mouseLocation.x - 8,
+                y: target.mouseLocation.y - 14,
+                width: 16,
+                height: 28
+            )
         }
-        let point = CGPoint(x: protected.midX, y: protected.midY)
+        let point = CGPoint(x: anchor.midX, y: anchor.midY)
         guard let screen = AXHelpers.screen(containing: point) else {
             panel.orderOut(nil)
             return
         }
-        if !hasFieldBounds {
-            guard protected.height > 2 else {
-                panel.orderOut(nil)
-                return
-            }
-            // Without field bounds, reserve the whole line for an inline completion.
-            protected = CGRect(x: screen.visibleFrame.minX, y: protected.minY,
-                               width: screen.visibleFrame.width, height: protected.height)
+        guard anchor.height > 1 else {
+            panel.orderOut(nil)
+            return
         }
-        guard let frame = TriggerButtonGeometry.frame(avoiding: protected, size: size, visibleFrame: screen.visibleFrame)
-        else {
+        let avoid = TriggerButtonPlacement.avoidRect(for: target, fieldFrame: fieldFrame, anchor: anchor)
+        let frame: CGRect
+        if target.kind == .input || (target.kind == .selection && anchor.width > 4) {
+            frame = TriggerButtonGeometry.frame(
+                adjacentTo: anchor,
+                size: size,
+                visibleFrame: screen.visibleFrame
+            )
+        } else if let legacy = TriggerButtonGeometry.frame(
+            avoiding: avoid,
+            size: size,
+            visibleFrame: screen.visibleFrame
+        ) {
+            frame = legacy
+        } else {
             panel.orderOut(nil)
             lastRect = .zero
             return
         }
+        _ = avoid
 
         if panel.isVisible, frame == lastRect { return }
 

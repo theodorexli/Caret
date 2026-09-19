@@ -40,17 +40,56 @@ def build() -> None:
         if seed_dst.exists():
             shutil.rmtree(seed_dst)
         shutil.copytree(seed_src, seed_dst)
-    plist = dist_app / "Contents" / "Info.plist"
-    if plist.is_file():
-        subprocess.run(
-            ["/usr/libexec/PlistBuddy", "-c", f"Set :CaretProjectRoot {root}", str(plist)],
-            check=False,
-        )
-        subprocess.run(
-            ["/usr/libexec/PlistBuddy", "-c", f"Add :CaretProjectRoot string {root}", str(plist)],
-            check=False,
-        )
+    stamp_project_root(dist_app, root=root, release=_release_mode())
+    adhoc_sign(dist_app)
     print(f"Built {dist_app}")
+
+
+def _release_mode() -> bool:
+    return "--release" in set(sys.argv[1:]) or __import__("os").environ.get("CARET_RELEASE_DMG") == "1"
+
+
+def stamp_project_root(dist_app: Path, *, root: Path, release: bool) -> None:
+    plist = dist_app / "Contents" / "Info.plist"
+    if not plist.is_file():
+        return
+    if release:
+        # Distributed builds must not embed a CI machine path. Users set
+        # CARET_PROJECT_ROOT or ~/.config/caret/dev.json "root" for the Python core.
+        subprocess.run(
+            ["/usr/libexec/PlistBuddy", "-c", "Delete :CaretProjectRoot", str(plist)],
+            check=False,
+        )
+        return
+    subprocess.run(
+        ["/usr/libexec/PlistBuddy", "-c", f"Set :CaretProjectRoot {root}", str(plist)],
+        check=False,
+    )
+    subprocess.run(
+        ["/usr/libexec/PlistBuddy", "-c", f"Add :CaretProjectRoot string {root}", str(plist)],
+        check=False,
+    )
+
+
+def adhoc_sign(dist_app: Path) -> None:
+    """Re-seal after post-build edits (Info.plist, NotesSeed). Without this,
+    Gatekeeper reports the app as damaged on download."""
+    run([
+        "codesign",
+        "--force",
+        "--deep",
+        "--sign", "-",
+        str(dist_app),
+    ])
+    verify = subprocess.run(
+        ["codesign", "--verify", "--deep", "--strict", str(dist_app)],
+        capture_output=True,
+        text=True,
+    )
+    if verify.returncode != 0:
+        raise SystemExit(
+            f"codesign verify failed for {dist_app}:\n{verify.stderr or verify.stdout}"
+        )
 
 
 def make_dmg() -> None:
@@ -92,5 +131,9 @@ if __name__ == "__main__":
         make_dmg()
     if "--install" in args:
         install()
-    if not args:
-        print("Add --install to copy Caret.app into /Applications, or --dmg to write dist/Caret.dmg.")
+    if not args or args <= {"--release"}:
+        print(
+            "Add --install to copy Caret.app into /Applications, "
+            "--dmg to write dist/Caret.dmg, and --release for GitHub distribution "
+            "(omits CaretProjectRoot in the bundle)."
+        )

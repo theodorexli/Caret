@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import os
 
@@ -47,16 +48,24 @@ public struct CoreLaunchConfiguration: Equatable, Sendable {
 /// reply sitting in the pipe when the child exits cannot be lost behind the
 /// termination that follows it. The main thread never blocks on the pipe.
 public final class CoreProcessTransport: CoreTransport {
+    /// A dead child closes its read end of stdin; a late write then raises
+    /// SIGPIPE and kills the host unless it is ignored (common for pipe writers).
+    private static let ignoreSIGPIPE: Void = {
+        _ = signal(SIGPIPE, SIG_IGN)
+    }()
+
     private let configuration: CoreLaunchConfiguration
     private let log = Logger(subsystem: "com.caret.app", category: "core-transport")
     private let lock = NSLock()
 
     private var process: Process?
     private var stdinPipe: Pipe?
+    private var stdinClosed = false
     private var terminated = false
     private var stderrLineCount = 0
 
     public init(configuration: CoreLaunchConfiguration) {
+        Self.ignoreSIGPIPE
         self.configuration = configuration
     }
 
@@ -89,6 +98,7 @@ public final class CoreProcessTransport: CoreTransport {
         self.process = process
         self.stdinPipe = stdin
         self.terminated = false
+        self.stdinClosed = false
         self.stderrLineCount = 0
         lock.unlock()
 
@@ -134,8 +144,9 @@ public final class CoreProcessTransport: CoreTransport {
         lock.lock()
         let pipe = stdinPipe
         let running = process?.isRunning ?? false
+        let stdinClosed = self.stdinClosed
         lock.unlock()
-        guard let pipe, running else { throw BridgeError.notRunning }
+        guard let pipe, running, !stdinClosed else { throw BridgeError.notRunning }
         guard let data = (line + "\n").data(using: .utf8) else {
             throw BridgeError.malformedReply("request was not encodable as UTF-8")
         }
@@ -153,6 +164,9 @@ public final class CoreProcessTransport: CoreTransport {
         lock.unlock()
         // Closing stdin is how the core is asked to leave: its read loop ends,
         // it exits, stdout reaches EOF and the reader thread finishes.
+        lock.lock()
+        stdinClosed = true
+        lock.unlock()
         try? stdin?.fileHandleForWriting.close()
         guard let process, process.isRunning else { return }
         process.terminate()

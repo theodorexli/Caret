@@ -8,6 +8,9 @@ let package = Package(
         .executable(name: "Caret", targets: ["Caret"]),
         .library(name: "CaretCore", targets: ["CaretCore"]),
     ],
+    dependencies: [
+        .package(path: "../../packages/keytype/Packages/CompletionUI"),
+    ],
     targets: [
         // Transport to the Python core plus focused-field capture. Separate
         // from the app target so the protocol logic is testable without a
@@ -21,8 +24,8 @@ let package = Package(
         ),
         .executableTarget(
             name: "Caret",
-            dependencies: ["CaretCore"],
-            exclude: ["Info.plist"],
+            dependencies: ["CaretCore", .product(name: "CompletionUI", package: "CompletionUI")],
+            exclude: ["Info.plist", "Assets.xcassets"],
             linkerSettings: [
                 .linkedFramework("ApplicationServices"),
             ]

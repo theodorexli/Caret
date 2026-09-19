@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D90000000000000000000005 /* KeyType LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000004 /* KeyType LICENSE */; };
+		D90000000000000000000003 /* CompletionUI in Frameworks */ = {isa = PBXBuildFile; productRef = D90000000000000000000002 /* CompletionUI */; };
 		D20000000000000000000001 /* NoteEditorSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000002 /* NoteEditorSession.swift */; };
 		B10000000000000000000021 /* CaretApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* CaretApp.swift */; };
 		B10000000000000000000022 /* AXHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* AXHelpers.swift */; };
@@ -51,6 +53,10 @@
 		B1000000000000000000006C /* TextTyping.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000006B /* TextTyping.swift */; };
 		B1000000000000000000006E /* TypingPrefixCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000006D /* TypingPrefixCapture.swift */; };
 		B10000000000000000000070 /* TypingPrefixLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000006F /* TypingPrefixLogic.swift */; };
+		B1000000000000000000007B /* SelectionRectPlacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000007C /* SelectionRectPlacement.swift */; };
+		B1000000000000000000007F /* InputRectPlacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000080 /* InputRectPlacement.swift */; };
+		B10000000000000000000081 /* InputRectPlacementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000082 /* InputRectPlacementTests.swift */; };
+		B1000000000000000000007D /* SelectionRectPlacementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000007E /* SelectionRectPlacementTests.swift */; };
 		B10000000000000000000072 /* TypingPrefixLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000071 /* TypingPrefixLogicTests.swift */; };
 		B1000000000000000000002D /* PinnedActionsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* PinnedActionsStore.swift */; };
 		B1000000000000000000002E /* PinnedActionsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* PinnedActionsStoreTests.swift */; };
@@ -75,6 +81,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D90000000000000000000004 /* KeyType LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = packages/keytype/LICENSE; sourceTree = SOURCE_ROOT; };
 		D20000000000000000000002 /* NoteEditorSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEditorSession.swift; sourceTree = "<group>"; };
 		B1000000000000000000000F /* Caret.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Caret.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000011 /* CaretApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaretApp.swift; sourceTree = "<group>"; };
@@ -119,6 +126,10 @@
 		B1000000000000000000006B /* TextTyping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextTyping.swift; sourceTree = "<group>"; };
 		B1000000000000000000006D /* TypingPrefixCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypingPrefixCapture.swift; sourceTree = "<group>"; };
 		B1000000000000000000006F /* TypingPrefixLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypingPrefixLogic.swift; sourceTree = "<group>"; };
+		B1000000000000000000007C /* SelectionRectPlacement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionRectPlacement.swift; sourceTree = "<group>"; };
+		B10000000000000000000080 /* InputRectPlacement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputRectPlacement.swift; sourceTree = "<group>"; };
+		B10000000000000000000082 /* InputRectPlacementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputRectPlacementTests.swift; sourceTree = "<group>"; };
+		B1000000000000000000007E /* SelectionRectPlacementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionRectPlacementTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000071 /* TypingPrefixLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypingPrefixLogicTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001E /* PinnedActionsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedActionsStoreTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001F /* CaretTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CaretTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -138,6 +149,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B100000000000000000000A2 /* CaretCore in Frameworks */,
+				D90000000000000000000003 /* CompletionUI in Frameworks */,
 				B1000000000000000000002A /* ApplicationServices.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -224,6 +236,8 @@
 				B1000000000000000000006B /* TextTyping.swift */,
 				B1000000000000000000006D /* TypingPrefixCapture.swift */,
 				B1000000000000000000006F /* TypingPrefixLogic.swift */,
+				B1000000000000000000007C /* SelectionRectPlacement.swift */,
+				B10000000000000000000080 /* InputRectPlacement.swift */,
 				B10000000000000000000018 /* Assets.xcassets */,
 			);
 			name = Caret;
@@ -245,6 +259,8 @@
 				B10000000000000000000053 /* ScreenpipeSupervisorTests.swift */,
 				B10000000000000000000065 /* HistoryDebugTests.swift */,
 				B10000000000000000000071 /* TypingPrefixLogicTests.swift */,
+				B1000000000000000000007E /* SelectionRectPlacementTests.swift */,
+				B10000000000000000000082 /* InputRectPlacementTests.swift */,
 			);
 			name = CaretTests;
 			path = apps/mac/Tests;
@@ -271,6 +287,7 @@
 			productReference = B1000000000000000000001F /* CaretTests.xctest */;
 			packageProductDependencies = (
 				B100000000000000000000A1 /* CaretCore */,
+				D90000000000000000000002 /* CompletionUI */,
 			);
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
@@ -312,6 +329,8 @@
 				B10000000000000000000054 /* ScreenpipeSupervisorTests.swift in Sources */,
 				B10000000000000000000066 /* HistoryDebugTests.swift in Sources */,
 				B10000000000000000000072 /* TypingPrefixLogicTests.swift in Sources */,
+				B1000000000000000000007D /* SelectionRectPlacementTests.swift in Sources */,
+				B10000000000000000000081 /* InputRectPlacementTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -350,6 +369,7 @@
 			productRefGroup = B1000000000000000000000D /* Products */;
 			packageReferences = (
 				B100000000000000000000A0 /* XCLocalSwiftPackageReference "apps/mac" */,
+				D90000000000000000000001 /* KeyType CompletionUI */,
 			);
 			projectDirPath = "";
 			projectRoot = "";
@@ -366,6 +386,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B10000000000000000000028 /* Assets.xcassets in Resources */,
+				D90000000000000000000005 /* KeyType LICENSE in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -422,6 +443,8 @@
 				B1000000000000000000006C /* TextTyping.swift in Sources */,
 				B1000000000000000000006E /* TypingPrefixCapture.swift in Sources */,
 				B10000000000000000000070 /* TypingPrefixLogic.swift in Sources */,
+				B1000000000000000000007B /* SelectionRectPlacement.swift in Sources */,
+				B1000000000000000000007F /* InputRectPlacement.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -550,6 +573,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		D90000000000000000000001 /* KeyType CompletionUI */ = {isa = XCLocalSwiftPackageReference; relativePath = packages/keytype/Packages/CompletionUI; };
 		B100000000000000000000A0 /* XCLocalSwiftPackageReference "apps/mac" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = apps/mac;
@@ -557,6 +581,7 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		D90000000000000000000002 /* CompletionUI */ = {isa = XCSwiftPackageProductDependency; productName = CompletionUI; };
 		B100000000000000000000A1 /* CaretCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CaretCore;

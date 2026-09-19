@@ -148,11 +148,16 @@ final class SelectionMonitor {
         }
 
         if !selected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let screenRect = SelectionRectPlacement.screenRect(
+                rawBounds: selectionBounds,
+                mouse: mouse,
+                fieldFrame: frame
+            )
             publish(
                 SelectionTarget(
                     kind: .selection,
                     selectedText: selected,
-                    screenRect: selectionBounds ?? CGRect(x: mouse.x, y: mouse.y, width: 1, height: 1),
+                    screenRect: screenRect,
                     mouseLocation: mouse,
                     sourceApp: app.localizedName,
                     fieldContext: fieldContext,
@@ -165,12 +170,19 @@ final class SelectionMonitor {
         }
 
         if isTextInput(role: role, subrole: subrole, element: element) {
-            let caret = element.flatMap { AXHelpers.caretBounds($0) }
+            let rawCaret = element.flatMap { AXHelpers.caretBounds($0) }
+                ?? frame
+                ?? CGRect(x: mouse.x, y: mouse.y, width: 1, height: 1)
+            let screenRect = InputRectPlacement.screenRect(
+                rawCaret: rawCaret,
+                mouse: mouse,
+                fieldFrame: frame
+            )
             publish(
                 SelectionTarget(
                     kind: .input,
                     selectedText: "",
-                    screenRect: caret ?? frame ?? CGRect(x: mouse.x, y: mouse.y, width: 1, height: 1),
+                    screenRect: screenRect,
                     mouseLocation: mouse,
                     sourceApp: app.localizedName,
                     fieldContext: fieldContext,

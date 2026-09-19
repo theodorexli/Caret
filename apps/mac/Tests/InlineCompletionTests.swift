@@ -1,4 +1,5 @@
 import XCTest
+import ApplicationServices
 #if SWIFT_PACKAGE
 @testable import Caret
 #endif
@@ -249,4 +250,140 @@ final class InlineTextTests: XCTestCase {
 
 
 
+}
+
+/// Exercises the actual Tab owner without sending keyboard events to the Mac.
+@MainActor
+final class TabPreviewSafetyTests: XCTestCase {
+    @MainActor
+    private final class Host {
+        var snapshot: TabCompletionsController.Snapshot?
+        var insertions: [String] = []
+        var previews: [String] = []
+        var canShow = true
+        var accept: (() -> Bool)?
+        var dismiss: (() -> Void)?
+
+        init() { snapshot = Self.snapshot() }
+
+        static func snapshot(pid: pid_t = 101, value: String = "Do any", caret: Int = 6) -> TabCompletionsController.Snapshot {
+            .init(processID: pid, element: AXUIElementCreateApplication(pid), value: value,
+                  selection: NSRange(location: caret, length: 0), anchor: CGRect(x: 10, y: 10, width: 1, height: 18))
+        }
+
+        func controller() -> TabCompletionsController {
+            let controller = TabCompletionsController(environment: .init(
+                capture: { self.snapshot },
+                show: { text, _ in self.previews.append(text); return self.canShow },
+                hide: {},
+                arm: { self.accept = $0; self.dismiss = $1 },
+                insert: { self.insertions.append($0); return true },
+                complete: { _, _ in XCTFail("Pattern should not need model generation"); return "" }
+            ))
+            controller.configuration = { ("- Do anything", []) }
+            return controller
+        }
+    }
+
+    private var target: SelectionTarget {
+        .init(kind: .input, selectedText: "", screenRect: .zero, mouseLocation: .zero,
+              sourceApp: "Test", focusedProcessID: 101)
+    }
+
+    func testPreviewRefreshAndDismissNeverWrite() {
+        let host = Host()
+        let controller = host.controller()
+        for _ in 0..<20 { controller.update(target: target) }
+        XCTAssertEqual(host.previews, ["thing"])
+        XCTAssertEqual(host.snapshot?.value, "Do any")
+        XCTAssertTrue(host.insertions.isEmpty)
+        host.dismiss?()
+        controller.update(target: target)
+        XCTAssertNil(host.accept)
+        XCTAssertTrue(host.insertions.isEmpty)
+        controller.clearOffer()
+        XCTAssertTrue(host.insertions.isEmpty)
+    }
+
+    func testTabWritesExactlyOnceAndDoesNotReofferUnchangedField() {
+        let host = Host()
+        let controller = host.controller()
+        controller.update(target: target)
+        let accept = host.accept
+        XCTAssertEqual(accept?(), true)
+        XCTAssertEqual(accept?(), false)
+        controller.update(target: target)
+        XCTAssertEqual(host.insertions, ["thing"])
+        XCTAssertNil(host.accept)
+    }
+
+    func testChangedFieldValueCaretAndMissingAccessRejectTab() {
+        let changes: [TabCompletionsController.Snapshot?] = [
+            Host.snapshot(pid: 102),
+            .init(processID: 101, element: AXUIElementCreateApplication(102), value: "Do any",
+                  selection: NSRange(location: 6, length: 0), anchor: Host.snapshot().anchor),
+            Host.snapshot(value: "Do any other text"),
+            Host.snapshot(caret: 2),
+            nil,
+        ]
+        for changed in changes {
+            let host = Host()
+            let controller = host.controller()
+            controller.update(target: target)
+            let accept = host.accept
+            host.snapshot = changed
+            XCTAssertEqual(accept?(), false)
+            XCTAssertTrue(host.insertions.isEmpty)
+        }
+    }
+
+    func testFocusLossDismissesWithoutWriting() {
+        let host = Host()
+        let controller = host.controller()
+        controller.update(target: target)
+        controller.update(target: nil)
+        XCTAssertNil(host.accept)
+        XCTAssertTrue(host.insertions.isEmpty)
+    }
+
+    func testHiddenPreviewDoesNotOwnTab() {
+        let host = Host()
+        host.canShow = false
+        let controller = host.controller()
+        controller.update(target: target)
+        XCTAssertNil(host.accept)
+        XCTAssertTrue(host.insertions.isEmpty)
+    }
+
+    func testCancelledModelResponseCannotReplaceNewerPattern() async {
+        let host = Host()
+        host.snapshot = Host.snapshot(value: "Earlier text", caret: 12)
+        let started = expectation(description: "Model request started")
+        var pending: CheckedContinuation<String, Error>?
+        let controller = TabCompletionsController(environment: .init(
+            capture: { host.snapshot },
+            show: { text, _ in host.previews.append(text); return true },
+            hide: {},
+            arm: { host.accept = $0; host.dismiss = $1 },
+            insert: { host.insertions.append($0); return true },
+            complete: { _, _ in
+                try await withCheckedThrowingContinuation { continuation in
+                    pending = continuation
+                    started.fulfill()
+                }
+            },
+            debounceNs: 0
+        ))
+        controller.configuration = { ("- Do anything", []) }
+        controller.update(target: target)
+        await fulfillment(of: [started], timeout: 2)
+        host.snapshot = Host.snapshot()
+        controller.update(target: target)
+        pending?.resume(returning: " stale suffix")
+        // Let the cancelled task resume after the new synchronous offer exists.
+        for _ in 0..<10 { await Task.yield() }
+        XCTAssertEqual(host.previews, ["thing"])
+        XCTAssertEqual(host.accept?(), true)
+        XCTAssertEqual(host.insertions, ["thing"])
+    }
 }

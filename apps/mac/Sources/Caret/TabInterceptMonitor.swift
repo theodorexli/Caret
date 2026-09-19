@@ -5,13 +5,16 @@ final class TabInterceptMonitor {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var handler: (() -> Bool)?
+    private var dismissHandler: (() -> Void)?
 
-    func setActive(_ active: Bool, onTab: (() -> Bool)?) {
+    func setActive(_ active: Bool, onTab: (() -> Bool)?, onDismiss: (() -> Void)? = nil) {
         if active, let onTab {
             handler = onTab
+            dismissHandler = onDismiss
             startIfNeeded()
         } else {
             handler = nil
+            dismissHandler = nil
             stop()
         }
     }
@@ -23,6 +26,15 @@ final class TabInterceptMonitor {
             guard type == .keyDown else { return Unmanaged.passUnretained(event) }
             guard let refcon else { return Unmanaged.passUnretained(event) }
             let monitor = Unmanaged<TabInterceptMonitor>.fromOpaque(refcon).takeUnretainedValue()
+            let key = event.getIntegerValueField(.keyboardEventKeycode)
+            // Any other keystroke invalidates the preview before the host edits.
+            if key != 48 || !event.flags.intersection([.maskShift, .maskControl, .maskAlternate, .maskCommand]).isEmpty {
+                monitor.dismissHandler?()
+                return Unmanaged.passUnretained(event)
+            }
+            guard event.getIntegerValueField(.keyboardEventAutorepeat) == 0 else {
+                return Unmanaged.passUnretained(event)
+            }
             // Shift-Tab and app shortcuts retain their normal navigation behavior.
             guard event.flags.intersection([.maskShift, .maskControl, .maskAlternate, .maskCommand]).isEmpty,
                   event.getIntegerValueField(.keyboardEventKeycode) == 48 else {

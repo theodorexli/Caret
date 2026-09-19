@@ -35,11 +35,23 @@ The starter needs Python 3.11+ and macOS 14+. `make app` requires full Xcode; Sw
 ```sh
 git clone https://github.com/theodorexli/hackathon-2026-09-19.git
 cd hackathon-2026-09-19
+git submodule update --init --depth 1 packages/keytype
 make test
 make demo
 make install    # Release Caret.app → /Applications
-# make dmg      # also writes dist/Caret.dmg
+make dmg        # writes dist/Caret.dmg locally (gitignored)
 ```
+
+**Prebuilt DMG (no Xcode):** open [GitHub Releases](https://github.com/theodorexli/hackathon-2026-09-19/releases), download `Caret.dmg`, drag Caret into Applications. The build is ad-hoc signed (not notarized). If macOS says Caret is “damaged,” clear the download quarantine, then open again:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Caret.app
+open /Applications/Caret.app
+```
+
+Gateway skills and Tab completions that call the Python core still need a clone of this repo and `~/.config/caret/dev.json` with `"root"` set to that path (or `CARET_PROJECT_ROOT`). Notes and skills seed from the app bundle into Application Support on first run.
+
+Maintainers: push a tag `v*` or run the **Release Caret.dmg** workflow (Actions → workflow_dispatch) to upload a fresh `Caret.dmg` to Releases.
 
 Caret.app starts pinned Screenpipe 0.4.50 on port 3031 (clipboard history on) when that port is free. It resolves the published `screenpipe` binary and bootstraps a Caret-owned launchd job (`dev.caret.hackathon.screenpipe`) so the recorder is not a Caret child. If the port is already taken, it does not start a second recorder. It writes `.local/screenpipe-lease.json` only after `/health` reports the pin version — for a job Caret started, or for an existing matching listener (lease `pid` 0). A listener that is not that pin gets no lease. The built app Info.plist carries `CaretProjectRoot` so the supervisor, skills, memories, and notes can find this repository. `python3 -m caret` can then ask for last-N windows, minutes, or clipboard, newest first. The Caret menu Debug item shows a short last-2 windows / minutes / clipboard preview of what Caret currently sees.
 
