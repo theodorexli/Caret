@@ -28,3 +28,14 @@ Clip the Caret Debug window out of Debug last-N windows so the newest item is th
     - Do not change inference `last_n_windows` callers
 * Insights
     - Distinct-window walk must skip before the count cap, or last-2 becomes last-1 after the clip
+
+## 2026-09-19 - QA - COMPLETE (PASS)
+
+* Work completed
+    - Semantic review of `last_n_windows(skip_titles=)` and `debug_preview` against the project brief
+    - Wrote `memory-bank/active/.qa-validation-status` as PASS
+* Decisions made
+    - Accept skip-during-walk; filtering after the cap would shrink last-N
+    - No blocking findings; L1 wrap-up is the parent’s next step
+* Insights
+    - Title-only skip is enough because Swift sets `window.title = "Caret Debug"` and Screenpipe stores that as `window_name`
