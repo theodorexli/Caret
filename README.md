@@ -19,7 +19,7 @@ Caret.app launches pinned Screenpipe 0.4.50 on port 3031 (clipboard history on) 
 
 The current app asks for Accessibility, then shows a blue asterisk beside supported fields and selections. Command–Option or the button opens the scrollable action list; up to three pinned actions use Command–Option–1/2/3. These actions currently log and close the panel. Inline completion, Tab acceptance, Command–1/2/3 and model routing are planned, not wired. The [input pipeline contract](docs/input-pipeline.md) defines the next implementation and the owners.
 
-**This is a contributor starter, not the finished ninety-second demo.** `make demo` runs the Python preview and local SQLite state on explicitly synthetic data. Teddy's current action UI is not connected to that CLI. Gmail, Google Calendar, Jev inference, Screenpipe and computer execution are not connected. Accessibility currently locates fields and selections; the app cannot send email, create external events or purchase anything.
+**This is a contributor starter, not the finished ninety-second demo.** `make demo` runs the Python preview and local SQLite state on explicitly synthetic data. Teddy's current action UI is not connected to that CLI. Gmail, Google Calendar, Jev inference and computer execution are not connected. Accessibility currently locates fields and selections; the app cannot send email, create external events or purchase anything.
 
 ## Where to work
 

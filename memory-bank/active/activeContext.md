@@ -1,14 +1,11 @@
 # Active Context
 
 ## Current Task: caret-screenpipe-history
-**Phase:** BUILD - COMPLETE
+**Phase:** REFLECT COMPLETE
 
 ## What Was Done
-- Operator asked for super-abridged TDD (happy paths only).
-- Pin launch now stores clipboard and listens on 3031 (`--disable-audio` so spawn is not blocked by mic TCC).
-- `last_n_minutes` / `last_n_windows` are newest-first; `last_n_clipboard` + `history-clipboard` added.
-- `ScreenpipeSupervisor` starts off the main thread, writes `.local/screenpipe-lease.json`, stops on terminate.
-- Python: 16 tests OK. `swift build --package-path apps/mac` OK. `xcodebuild test` blocked here by an unsigned Xcode license.
+- Reflection written. Persistent files: productContext/systemPatterns already current; techContext now names last-N commands and the launched pin.
+- Post-QA: lease is not written if health never matches; README no longer says Screenpipe is unconnected.
 
 ## Next Step
-- QA via Cursor Grok High Fast, then reflect, archive, and open a PR.
+- Archive, then open a draft PR.

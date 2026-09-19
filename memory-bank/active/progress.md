@@ -59,3 +59,29 @@ Caret.app launches and supervises pinned Screenpipe 0.4.50 with clipboard histor
     - `--disable-audio` on the pin so Caret’s child can start without mic TCC
 * Insights
     - This environment cannot run `xcodebuild test` (Xcode license). Supervisor happy-path is compiled via `swift build`.
+
+## 2026-09-19 - QA - COMPLETE
+
+* Work completed
+    - QA PASS via Cursor Grok High Fast
+* Decisions made
+    - Advisories only; fixed health-timeout lease write and README wording after QA
+
+## 2026-09-19 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote `memory-bank/active/reflection/reflection-caret-screenpipe-history.md`
+    - Reconciled techContext last-N / launch pointers
+* Insights
+    - Version-matching attach would have leased a clipboard-off recorder; Caret-owned port 3031 avoids that
+
+## 2026-09-19 - QA - COMPLETE
+
+* Work completed
+    - Semantic review of pin, last-N newest-first, clipboard query, Swift supervisor, and README against the plan
+    - Wrote `memory-bank/active/.qa-validation-status` with first line `PASS`
+* Decisions made
+    - PASS with advisories; nothing must change before acceptance
+    - Missing negative tests, silent health-timeout lease write, and the README “not connected” sentence are advisories
+* Insights
+    - Always-spawn on 3031 plus Python query-time hard-fail keeps leftover launchd :3030 out of the facade even when supervisor start is best-effort

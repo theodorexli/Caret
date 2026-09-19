@@ -3,6 +3,7 @@ import Foundation
 
 enum ScreenpipeSupervisorError: Error {
     case invalidPin
+    case notHealthy
 }
 
 enum ScreenpipeSupervisor {
@@ -77,7 +78,7 @@ enum ScreenpipeSupervisor {
         try child.run()
         process = child
         let endpoint = endpoint(from: launch)
-        waitForHealth(endpoint: endpoint, version: pin["expected_health_version"] as? String ?? "")
+        try waitForHealth(endpoint: endpoint, version: pin["expected_health_version"] as? String ?? "")
         let checksum = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         let payload = leasePayload(
             pin: pin,
@@ -92,7 +93,7 @@ enum ScreenpipeSupervisor {
         return lease
     }
 
-    private static func waitForHealth(endpoint: String, version: String) {
+    private static func waitForHealth(endpoint: String, version: String) throws {
         let deadline = Date().addingTimeInterval(60)
         while Date() < deadline {
             if let url = URL(string: endpoint + "/health"),
@@ -104,5 +105,6 @@ enum ScreenpipeSupervisor {
             }
             Thread.sleep(forTimeInterval: 0.5)
         }
+        throw ScreenpipeSupervisorError.notHealthy
     }
 }
