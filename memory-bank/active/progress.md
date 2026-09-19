@@ -67,3 +67,24 @@ Caret must launch pinned Screenpipe on app start when the expected port is free,
     - SwiftPM `exclude: ["Info.plist"]` so the Xcode-only plist is not a package resource
 * Insights
     - `INFOPLIST_FILE` merge is what actually ships `CaretProjectRoot`; `INFOPLIST_KEY_*` does not
+
+## 2026-09-19 - QA - COMPLETE
+
+* Work completed
+    - QA `FAIL`: README and techContext overstated adopt-and-lease for any occupied port
+* Decisions made
+    - Documentation-only Build rerun to match `waitForHealth` before lease write
+
+## 2026-09-19 - BUILD - COMPLETE
+
+* Work completed
+    - Corrected README and techContext: no spawn when the port is taken; lease only after pin-version `/health`
+
+## 2026-09-19 - QA - COMPLETE (FAIL)
+
+* Work completed
+    - Reviewed the implementation against the approved Level 2 plan and project brief
+* Findings
+    - README.md and techContext.md incorrectly say any occupied port is adopted and produces a lease; a listener that does not return the pinned Screenpipe version fails the health gate and writes no lease
+* Next step
+    - Rerun Build to correct the documentation, then rerun QA
