@@ -1,9 +1,11 @@
 # Live workflow adapters
 
-Two adapters in `caret/live_workflows/` plug into the `WorkflowAdapter` seam in
+Three adapters in `caret/live_workflows/` plug into the `WorkflowAdapter` seam in
 `caret/registry.py`: `book-calendar-link`, which drafts a reply offering meeting
-times, and `book-flight`, which reports why it cannot run. Neither sends mail,
-writes a calendar or drives a browser.
+times; `book-flight`, which reports why it cannot run; and `report-github-issue`,
+which researches a public GitHub repo on an explicit panel invoke and writes
+only after accept, through computer-use-jev. The first two never send mail,
+write a calendar or drive a browser. The third never writes during `prepare`.
 
 This page is for whoever registers them and whoever adds the next adapter.
 For the seam itself see [bridge-protocol.md](bridge-protocol.md); for the
@@ -111,6 +113,33 @@ returns that object. Nothing the caller hands back can change what the workflow
 reports it produced. A second acceptance, a cancelled preparation and a
 tampered one all fail without effect.
 
+## report-github-issue
+
+An explicit panel action. The judge never sees this id on an ambient frame:
+`availability` is false unless the frame carries `explicit_invoke`. The default
+Mac bridge registers `ReportGithubIssueWorkflow` in `build_registry` and skips
+the matching `workflows.json` seed so a catalog `UnavailableWorkflow` cannot
+shadow it.
+
+`prepare` reads the complaint from nearby text, then clipboard. A
+`github.com/<owner>/<repo>` URL in that text is the repo; otherwise it searches
+public repositories with the frozen host app's display name. Research is
+unauthenticated `GET` to `api.github.com` (`/search/repositories`,
+`/search/issues`, and one issue body). There is no `gh`, no token, and no
+Authorization header. A 404 or empty public result is not-open-source. A
+timeout, 403, or bad JSON is a search failure, never not-open-source. Either
+way `prepare` raises `WorkflowError`; the bridge replies `workflow_error` and
+does not emit `failed`.
+
+A resolvable repo mints one offer: comment on a match that still has new
+tokens, or open a new issue. `missing_inputs` is empty,
+`execution_method` is `computer-use-jev`, and `sample_only` is false, so the
+Mac picker can arm Cmd-1. `execute` refuses unless the preparation token,
+snapshot and age still match and `repo_source` is `url` or `api-search`. The
+goal is one of two templates; only the repo slug or issue URL is interpolated.
+Auth is whatever GitHub session the user's browser already has. Non-GitHub
+trackers stay a code comment, not a path.
+
 ## book-flight
 
 Permanently unavailable in this slice, with the reason in
@@ -124,11 +153,11 @@ implementation goes once an enforcing capability exists.
 
 ## Registration
 
-Both classes take no constructor arguments. The following is the agreed integration
-hook, not a runnable command on this branch. The core owner must first land
-`caret.bridge` and its `--adapter` loader; the inspected reference bridge does not
-yet accept this flag. Alternatively its owner can explicitly register the instances
-returned by `caret.live_workflows.actions.adapters()`.
+`report-github-issue` is a built-in: `build_registry` constructs
+`ReportGithubIssueWorkflow()` with no arguments. `book-calendar-link` and
+`book-flight` still arrive through `--adapter` or `actions.adapters()`. The
+meeting and flight classes take no constructor arguments. The following is the
+agreed integration hook for those two.
 
 
 ```sh

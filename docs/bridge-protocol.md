@@ -34,6 +34,7 @@ A failure replaces `result` with a coded error:
 | `context.update` | `frame` | `status`: `admitted`, `coalesced` or `skipped`, with a `reason` |
 | `offer.accept` | `proposal_id`, `revision`, `target` | The inline edit to apply, or the workflow's execution result |
 | `offer.dismiss` | `proposal_id` | `{"dismissed": true}` |
+| `workflow.prepare` | `workflow_id`, `frame` | `{"offer": …}` — one minted action offer |
 | `workflows.list` | none | Every registered workflow with its execution method |
 | `shutdown` | none | `{"stopped": true}`, then the process exits |
 
@@ -42,6 +43,15 @@ Error codes: `invalid_json`, `invalid_request`, `invalid_context`,
 `internal_error`. The last one is the catch-all: an exception no other code
 covers still gets a reply, because a request that is answered by the process
 exiting cannot be retried.
+
+`workflow.prepare` is request-reply only. It names a registered workflow and a
+context frame, installs the resulting offer on the router without submitting
+the ambient queue, and returns that offer on the same `id`. It does not wake
+the evaluator and it does not write an `offer`, `failed`, or `invalidated`
+event. A `WorkflowError` from the adapter — not-open-source, empty complaint,
+search failure — is `workflow_error` on the reply. A malformed frame is
+`invalid_context`. The app shows the sentence from the reply; it must not wait
+for a later event on this path.
 
 ## Events
 

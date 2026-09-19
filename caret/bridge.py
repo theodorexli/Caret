@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import TextIO
 
 from .adapters import SampleSchedulerWorkflow, seeds_from_catalog
+from .live_workflows.report_issue import ReportGithubIssueWorkflow
 from .context import ContextError, ContextFrame, TargetIdentity
 from .engine import Engine, ProviderFailure
 from .judge import JudgeError
@@ -195,6 +196,8 @@ class Bridge:
             elif method == "context.update":
                 self._reply(request_id, self._context_update(params))
                 self._wake.set()
+            elif method == "workflow.prepare":
+                self._reply(request_id, self._prepare(params))
             elif method == "offer.accept":
                 self._reply(request_id, self._accept(params))
             elif method == "offer.dismiss":
@@ -233,6 +236,14 @@ class Bridge:
     def _context_update(self, params: dict) -> dict:
         frame = ContextFrame.from_dict(params.get("frame"), "params.frame")
         return self.engine.submit(frame).to_dict()
+
+    def _prepare(self, params: dict) -> dict:
+        workflow_id = params.get("workflow_id")
+        if not isinstance(workflow_id, str) or not workflow_id:
+            raise WorkflowError("workflow.prepare needs a non-empty 'workflow_id'")
+        frame = ContextFrame.from_dict(params.get("frame"), "params.frame")
+        offer = self.engine.prepare_named(workflow_id, frame)
+        return {"offer": offer.to_dict()}
 
     def _accept(self, params: dict) -> dict:
         proposal_id = params.get("proposal_id")
@@ -328,12 +339,13 @@ def build_registry(
     """
     registry = WorkflowRegistry()
     registry.register(SampleSchedulerWorkflow(fixture, database))
+    registry.register(ReportGithubIssueWorkflow())
     if paul_scheduler is not None:
         from .adapters.paul_scheduler import PaulSchedulerWorkflow
 
         registry.register(PaulSchedulerWorkflow(paul_scheduler))
     catalog = Path(__file__).with_name("workflows.json")
-    for adapter in seeds_from_catalog(catalog, skip=frozenset({"book-calendar-link"})):
+    for adapter in seeds_from_catalog(catalog, skip=frozenset({"book-calendar-link", "report-github-issue"})):
         registry.register(adapter)
 
     external: dict[str, str] = {}

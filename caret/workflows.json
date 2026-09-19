@@ -20,5 +20,12 @@
     "inputs": ["selected_text", "instruction"],
     "stages": ["generate", "preview", "replace_selection"],
     "status": "adapter_required"
+  },
+  {
+    "id": "report-github-issue",
+    "name": "Report a GitHub issue",
+    "inputs": ["complaint", "frontmost_app", "clipboard"],
+    "stages": ["prepare", "offer", "accept", "computer-use-jev"],
+    "status": "explicit_invoke"
   }
 ]

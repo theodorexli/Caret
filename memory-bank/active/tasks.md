@@ -219,37 +219,37 @@ sequenceDiagram
 
 - Files: `caret/live_workflows/github.py`, `tests/test_report_issue.py`
 
-1. Stub tests: URL wins, `frontmost_app` search wins, not-open-source, empty complaint, `SearchFailed` vs not-OSS, match with new tokens → comment, match already covered → no comment, no match → new issue.
-2. Stub interface: `Repo`, `IssueMatch`, `GitHubPort` protocol, `PublicGitHub`, `NotOpenSource`, `NoComplaint`, `SearchFailed`, `complaint_from`, `display_name`, `repo_from_text`, `resolve_repo`, `search_issues`, `recommend`. Tracker-hook comment beside the port.
-3. Write tests and run red: fake `GitHubPort`; URL case never calls `search_repos`; 403 is `SearchFailed`; empty items is `NotOpenSource`.
-4. Write code and run green: `PublicGitHub` uses stdlib `urllib` against `https://api.github.com` with a `User-Agent` and **no Authorization header**. Calls: `GET /search/repositories`, `GET /search/issues`, `GET /repos/{owner}/{repo}/issues/{n}` for the first match's body only. Timeout bounded. Nothing else.
+1. [x] Stub tests: URL wins, `frontmost_app` search wins, not-open-source, empty complaint, `SearchFailed` vs not-OSS, match with new tokens → comment, match already covered → no comment, no match → new issue.
+2. [x] Stub interface: `Repo`, `IssueMatch`, `GitHubPort` protocol, `PublicGitHub`, `NotOpenSource`, `NoComplaint`, `SearchFailed`, `complaint_from`, `display_name`, `repo_from_text`, `resolve_repo`, `search_issues`, `recommend`. Tracker-hook comment beside the port.
+3. [x] Write tests and run red: fake `GitHubPort`; URL case never calls `search_repos`; 403 is `SearchFailed`; empty items is `NotOpenSource`.
+4. [x] Write code and run green: `PublicGitHub` uses stdlib `urllib` against `https://api.github.com` with a `User-Agent` and **no Authorization header**. Calls: `GET /search/repositories`, `GET /search/issues`, `GET /repos/{owner}/{repo}/issues/{n}` for the first match's body only. Timeout bounded. Nothing else.
 
 ### 2. Workflow adapter — executable
 
 - Files: `caret/live_workflows/report_issue.py`, `tests/test_report_issue_workflow.py`
 
-1. Stub tests: descriptor fields, availability with and without `explicit_invoke`, prepare spawns nothing, prepare raises the three typed errors, execute spawns once with a templated goal, execute refuses bad tokens/snapshots/`repo_source`.
-2. Stub interface: `ReportGithubIssueWorkflow` with injectable `github`, `environ`, `clock`, `timeout`.
-3. Write tests and run red: fake `GitHubPort` and fake spawn; goal is a template with only slug or issue URL interpolated.
-4. Write code and run green: `prepare` uses the public port only. Payload `repo_source` is `"url"` or `"api-search"`. `execute` refuses any other `repo_source`, then runs computer-use-jev the same way `NativeComputerUseWorkflow` does. No GitHub token is read for execute.
+1. [x] Stub tests: descriptor fields, availability with and without `explicit_invoke`, prepare spawns nothing, prepare raises the three typed errors, execute spawns once with a templated goal, execute refuses bad tokens/snapshots/`repo_source`.
+2. [x] Stub interface: `ReportGithubIssueWorkflow` with injectable `github`, `environ`, `clock`, `timeout`.
+3. [x] Write tests and run red: fake `GitHubPort` and fake spawn; goal is a template with only slug or issue URL interpolated.
+4. [x] Write code and run green: `prepare` uses the public port only. Payload `repo_source` is `"url"` or `"api-search"`. `execute` refuses any other `repo_source`, then runs computer-use-jev the same way `NativeComputerUseWorkflow` does. No GitHub token is read for execute.
 
 ### 3. Built-in registration and picker identity — executable
 
 - Files: `caret/bridge.py`, `caret/workflows.json`, `caret/live_workflows/actions.py`, `caret/live_workflows/__init__.py`, `caret/skills/report-github-issue/default.json`, `caret/notes/skills/report-github-issue.md`, `tests/test_bridge.py`, `tests/test_live_workflows.py`
 
-1. Stub tests: in `tests/test_bridge.py`, an empty case asserting `build_registry(fixture, db)` with no adapter specs resolves `report-github-issue` to `ReportGithubIssueWorkflow`. In `tests/test_live_workflows.py`, extend `test_the_action_table_matches_the_registered_ids` with the new id.
-2. Stub interface: add the `report-github-issue` row to `caret/workflows.json`; add `"ReportGithubIssueWorkflow": "report_issue"` to `_LAZY`; add the action-table and `ADAPTER_CLASS_PATHS` entries and the third instance in `actions.adapters()`.
-3. Write tests and run red: assert `isinstance(registry.get("report-github-issue"), ReportGithubIssueWorkflow)` and that the registered-id list is the three ids.
-4. Write code and run green: in `build_registry`, `registry.register(ReportGithubIssueWorkflow())` before the seed loop, and widen the skip to `frozenset({"book-calendar-link", "report-github-issue"})` so `seeds_from_catalog` does not raise on the duplicate id or shadow the adapter with an `UnavailableWorkflow`. Write `caret/skills/report-github-issue/default.json` with `name` and `description` in the shape `SkillRepository.loadSkill` reads, and `caret/notes/skills/report-github-issue.md` so a fresh Application Support store seeds the action too.
+1. [x] Stub tests: in `tests/test_bridge.py`, an empty case asserting `build_registry(fixture, db)` with no adapter specs resolves `report-github-issue` to `ReportGithubIssueWorkflow`. In `tests/test_live_workflows.py`, extend `test_the_action_table_matches_the_registered_ids` with the new id.
+2. [x] Stub interface: add the `report-github-issue` row to `caret/workflows.json`; add `"ReportGithubIssueWorkflow": "report_issue"` to `_LAZY`; add the action-table and `ADAPTER_CLASS_PATHS` entries and the third instance in `actions.adapters()`.
+3. [x] Write tests and run red: assert `isinstance(registry.get("report-github-issue"), ReportGithubIssueWorkflow)` and that the registered-id list is the three ids.
+4. [x] Write code and run green: in `build_registry`, `registry.register(ReportGithubIssueWorkflow())` before the seed loop, and widen the skip to `frozenset({"book-calendar-link", "report-github-issue"})` so `seeds_from_catalog` does not raise on the duplicate id or shadow the adapter with an `UnavailableWorkflow`. Write `caret/skills/report-github-issue/default.json` with `name` and `description` in the shape `SkillRepository.loadSkill` reads, and `caret/notes/skills/report-github-issue.md` so a fresh Application Support store seeds the action too.
 
 ### 4. install_offer, prepare_named and workflow.prepare — executable
 
 - Files: `caret/router.py`, `caret/engine.py`, `caret/bridge.py`, `tests/test_router.py`, `tests/test_engine.py`, `tests/test_bridge.py`
 
-1. Stub tests: in `tests/test_router.py`, pending cleared, `take_due` None, target/revision moved, old offer invalidated, in-flight ambient `complete_offer` discarded, in-flight ambient `complete_failure` discarded (no `failed`), revision-not-newer raises. In `tests/test_engine.py`, returned offer, no `submit`, unregistered id, adapter error. In `tests/test_bridge.py`, success reply, `workflow_error` reply, no `failed` event.
-2. Stub interface: `Router.install_offer(self, frame: ContextFrame, offer: Offer) -> Offer`; `Engine.prepare_named(self, workflow_id: str, frame: ContextFrame) -> Offer`; `Bridge._prepare(self, params: dict) -> dict` plus the `workflow.prepare` dispatch arm.
-3. Write tests and run red: spy on `on_invalidate` and `on_publish` to assert exactly which lifecycle callbacks fire.
-4. Write code and run green.
+1. [x] Stub tests: in `tests/test_router.py`, pending cleared, `take_due` None, target/revision moved, old offer invalidated, in-flight ambient `complete_offer` discarded, in-flight ambient `complete_failure` discarded (no `failed`), revision-not-newer raises. In `tests/test_engine.py`, returned offer, no `submit`, unregistered id, adapter error. In `tests/test_bridge.py`, success reply, `workflow_error` reply, no `failed` event.
+2. [x] Stub interface: `Router.install_offer(self, frame: ContextFrame, offer: Offer) -> Offer`; `Engine.prepare_named(self, workflow_id: str, frame: ContextFrame) -> Offer`; `Bridge._prepare(self, params: dict) -> dict` plus the `workflow.prepare` dispatch arm.
+3. [x] Write tests and run red: spy on `on_invalidate` and `on_publish` to assert exactly which lifecycle callbacks fire.
+4. [x] Write code and run green.
    - `install_offer` takes `_lock`, raises `WorkflowError` when `frame.revision <= self._highest_revision`, then sets `_highest_revision` and `_current_target` from the frame, sets `_pending = None`, calls `_invalidate_locked("replaced-by-explicit-invoke")` and assigns `_offer`. It does not take `_in_flight`. Moving revision and target makes an in-flight ambient `complete_offer` stale. **`complete_failure` must call `is_stale` the same way:** a stale ambient failure publishes `discarded` and does not set `_failed_at` or emit `failed`. That is the whole Sol-1 patch. No session object.
    - `prepare_named` calls `registry.get`, then `adapter.prepare(frame)`, then `build_action_offer`, then `install_offer`, and returns the offer. It does not call `availability`: the availability gate exists only to keep the id out of `registry.choices()`.
    - `Bridge._prepare` validates a non-empty string `workflow_id`, parses the frame with `ContextFrame.from_dict`, and replies `{"offer": offer.to_dict()}`. The dispatch arm must **not** call `self._wake.set()`. `WorkflowError` reaches the existing handler and becomes `workflow_error`; `ContextError` becomes `invalid_context`.
@@ -336,6 +336,6 @@ Prepare needs network. Execute needs `CARET_COMPUTER_USE_JEV` and `TYPESAFE_API_
 - [x] Implementation plan complete
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
-- [ ] Preflight
-- [ ] Build
+- [x] Preflight
+- [x] Build
 - [ ] QA

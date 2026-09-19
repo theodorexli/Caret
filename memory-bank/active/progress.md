@@ -195,11 +195,15 @@ Add a Caret skill that pauses the current app, understands a complaint, finds th
     - `SearchFailed` is not not-OSS
     - No session state machine
 
-## 2026-09-19 - BUILD - IN-PROGRESS
+## 2026-09-19 - BUILD - COMPLETE
 
 * Work completed
-    - Operator invoked `/niko-build` and overrode the leftover replan-5 `FAIL (fixable)` gate: do not re-preflight, do not ask for plan review
+    - Operator invoked `/niko-build` and overrode the leftover replan-5 `FAIL (fixable)` gate
+    - Units 1–6: public GitHub port, `ReportGithubIssueWorkflow`, built-in register, `install_offer` / `prepare_named` / `workflow.prepare`, Mac explicit invoke, docs
+    - `make check` passed (329 Python / 4 skipped; 95 + 72 Swift; sources; Xcode Debug)
 * Decisions made
-    - Build replan 6 as written
+    - Built replan 6 as written
+    - Discovery XCTest follows `CoreLaunchSettings` candidate order so Homebrew Python is a pass, not a hard-coded `/usr/bin/python3`
 * Insights
     - No creative-phase docs exist for this task
+    - `syncActionOffers` remains the only writer of `model.actionOffers`; the prepare reply must land in the provider store

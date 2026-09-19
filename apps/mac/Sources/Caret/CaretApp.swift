@@ -30,6 +30,9 @@ final class Model: ObservableObject {
     /// Why actions are unavailable right now, shown verbatim. Empty when the
     /// backend is healthy.
     @Published var backendStatus: String = ""
+    @Published private(set) var explicitStatus: String = ""
+    @Published private(set) var explicitPrepareInFlight: Bool = false
+    private(set) var explicitSessionActionID: String?
     var onRunAction: ((String) -> Void)?
     var memories: [MemoryItem] = []
     var onRun: ((CaretAction, CaretSkill?) -> Void)?
@@ -348,6 +351,24 @@ final class Model: ObservableObject {
         reloadCustomActions()
         self.scopedActionID = scopedActionID
         panelQuery = ""
+        explicitPrepareInFlight = false
+        explicitSessionActionID = nil
+    }
+
+    func beginExplicitInvoke(actionID: String) {
+        explicitSessionActionID = actionID
+        explicitPrepareInFlight = true
+        explicitStatus = "Searching GitHub…"
+    }
+
+    func failExplicitInvoke(_ message: String) {
+        explicitPrepareInFlight = false
+        explicitStatus = message
+    }
+
+    func finishExplicitInvoke() {
+        explicitPrepareInFlight = false
+        explicitStatus = ""
     }
 
     var onPanelLayoutChanged: (() -> Void)?
@@ -355,6 +376,8 @@ final class Model: ObservableObject {
     func clearPanelScope() {
         scopedActionID = nil
         panelQuery = ""
+        explicitPrepareInFlight = false
+        explicitSessionActionID = nil
         onPanelLayoutChanged?()
     }
 
@@ -433,6 +456,10 @@ final class Model: ObservableObject {
 
     /// Gateway actions use the skill note in Settings (`caret/notes/skills/*.md`), not JSON variants.
     func selectActionFromPanel(_ action: CaretAction) {
+        if ExplicitInvokeActions.contains(action.id) {
+            run(action, skill: nil)
+            return
+        }
         if GatewaySkillActions.contains(action.id) {
             run(action, skill: nil)
             return
@@ -495,6 +522,10 @@ final class Model: ObservableObject {
 
     func run(skill: CaretSkill) {
         guard let action = action(id: skill.actionID) else { return }
+        if ExplicitInvokeActions.contains(skill.actionID) {
+            run(action, skill: nil)
+            return
+        }
         if GatewaySkillActions.contains(action.id) {
             run(action, skill: nil)
             return
@@ -512,7 +543,7 @@ final class Model: ObservableObject {
     /// The offers the user can actually run, in the order Cmd-1..3 address
     /// them. A catalog entry with no executor is not in this list.
     var runnableOffers: [CaretActionOffer] {
-        actionOffers.filter { $0.isExecutable }
+        actionOffers.filter { $0.isExecutable && $0.state == .offered }
     }
 
     func ensureGatewayRun(_ action: CaretAction) {
@@ -628,6 +659,10 @@ struct SkillPickerView: View {
                     } else if model.showCreateRow {
                         model.submitCreateFromQuery()
                     }
+                }
+
+                if !model.explicitStatus.isEmpty {
+                    CaretActionStatusRow(title: model.explicitStatus, detail: "", tone: .unavailable)
                 }
 
                 if !model.actionOffers.isEmpty {
@@ -1066,6 +1101,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var bridge: CoreBridgeProvider?
     private let skillActionRunner = SkillActionRunner()
     private let statusBar = StatusBarController()
+    private var hostContext: HostContext?
+    private var explicitPrepareGeneration = 0
+    private var explicitProposalID: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         trigger = TriggerButtonController(chordState: chordState)
@@ -1090,6 +1128,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         model.onRun = { [weak self] action, skill in
             guard let self, let model = self.model else { return }
+            if ExplicitInvokeActions.contains(action.id) {
+                self.runExplicitInvoke(action: action, model: model)
+                return
+            }
             let target = self.freshTargetForGatewayAction()
             if GatewaySkillActions.contains(action.id) {
                 model.scopedActionID = action.id
@@ -1227,13 +1269,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         provider.onActionStateChange = { [weak self] proposalID, state in
             Task { @MainActor in
-                self?.model?.updateActionState(proposalID, state)
+                guard let self else { return }
+                self.model?.updateActionState(proposalID, state)
+                if proposalID == self.explicitProposalID, let summary = Self.explicitRunSummary(state) {
+                    self.explicitProposalID = nil
+                    self.resumeAfterExplicitRun(summary: summary)
+                }
             }
         }
         bridge = provider
 
         model.onRunAction = { [weak self] proposalID in
-            self?.bridge?.runAction(proposalID: proposalID)
+            guard let self else { return }
+            let workflowID = self.bridge?.actionOffer(id: proposalID)?.workflowID
+            self.bridge?.runAction(proposalID: proposalID)
+            if let workflowID, ExplicitInvokeActions.contains(workflowID) {
+                self.explicitProposalID = proposalID
+                self.standDownForExplicitRun()
+            }
         }
 
         let coordinator = InlineCompletionCoordinator(provider: provider, capture: capture)
@@ -1337,6 +1390,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func showPanel(at point: CGPoint, scopedActionID: String?) {
+        if let app = NSWorkspace.shared.frontmostApplication,
+           app.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+            hostContext = HostContext(
+                pid: app.processIdentifier,
+                bundleID: app.bundleIdentifier ?? "",
+                localizedName: app.localizedName ?? ""
+            )
+        }
         lastPanelPoint = point
         model?.preparePanel(scopedActionID: scopedActionID)
         trigger.hide()
@@ -1363,6 +1424,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func hidePanel() {
+        explicitPrepareGeneration += 1
         panel?.orderOut(nil)
         inlineCompletion?.setPaused(false)
         inlineCompletion?.setVisibleChoiceCount(0)
@@ -1372,6 +1434,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         restoreTypingAppFocus()
         trigger.update(target: lastTarget)
         tabCompletions.update(target: lastTarget)
+    }
+
+    private func runExplicitInvoke(action: CaretAction, model: Model) {
+        guard let host = hostContext else {
+            model.failExplicitInvoke("Caret could not see which app you were in.")
+            return
+        }
+        let generation = explicitPrepareGeneration
+        model.beginExplicitInvoke(actionID: action.id)
+        Task { @MainActor in
+            do {
+                let frame = self.capture.explicitActionFrame(host: host, complaint: model.trimmedPanelQuery)
+                _ = try await self.bridge?.prepareWorkflow(id: action.id, frame: frame)
+                guard generation == self.explicitPrepareGeneration else { return }
+                model.finishExplicitInvoke()
+            } catch let error as BridgeError {
+                guard generation == self.explicitPrepareGeneration else { return }
+                if case .core(_, let message) = error {
+                    model.failExplicitInvoke(message)
+                } else {
+                    model.failExplicitInvoke("Could not search GitHub issues.")
+                }
+            } catch {
+                guard generation == self.explicitPrepareGeneration else { return }
+                model.failExplicitInvoke("Could not search GitHub issues.")
+            }
+        }
+    }
+
+    private func standDownForExplicitRun() {
+        panel?.orderOut(nil)
+        panel?.resignKey()
+        removeClickOutside()
+        inlineCompletion?.setVisibleChoiceCount(0)
+    }
+
+    private func resumeAfterExplicitRun(summary: String) {
+        inlineCompletion?.setPaused(false)
+        model?.clearPanelScope()
+        trigger.update(target: lastTarget)
+        tabCompletions.update(target: lastTarget)
+        model?.failExplicitInvoke(summary)
+    }
+
+    private static func explicitRunSummary(_ state: CaretActionOffer.State) -> String? {
+        switch state {
+        case .succeeded(let summary, _, _): return summary
+        case .failed(let summary): return summary
+        case .cancelled(let summary): return summary
+        case .unavailable(let reason): return reason
+        case .offered, .running: return nil
+        }
     }
 
     /// Caret must not stay frontmost after the panel closes or inline Tab completions stop.
@@ -1393,6 +1507,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
+                if self.model?.explicitPrepareInFlight == true { return }
                 let screenPoint = NSEvent.mouseLocation
                 if let panel = self.panel, panel.isVisible, panel.frame.contains(screenPoint) {
                     return

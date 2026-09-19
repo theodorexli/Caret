@@ -331,5 +331,31 @@ class ExecutionTests(unittest.TestCase):
         self.assertEqual((result["replace_start"], result["replace_end"]), (16, 16))
 
 
+class PrepareNamedTests(unittest.TestCase):
+    def test_prepare_named_returns_the_offer_without_submit(self):
+        adapter = CountingWorkflow("report-github-issue")
+        engine, _, _, _ = build(adapters=[adapter])
+        offer = engine.prepare_named("report-github-issue", frame(3, text="It crashed"))
+        self.assertEqual(offer.workflow_id, "report-github-issue")
+        self.assertEqual(adapter.prepared, 1)
+        self.assertEqual(adapter.executed, 0)
+        self.assertIsNone(engine.router.take_due(engine.clock()))
+        self.assertEqual(engine.router.current_offer.proposal_id, offer.proposal_id)
+
+    def test_prepare_named_on_an_unregistered_id_raises(self):
+        engine, _, _, _ = build()
+        with self.assertRaises(WorkflowError):
+            engine.prepare_named("report-github-issue", frame(1))
+
+    def test_a_workflow_error_from_prepare_propagates_unchanged(self):
+        class Broken(CountingWorkflow):
+            def prepare(self, frame):
+                raise WorkflowError("This does not appear to be an open-source application.")
+
+        engine, _, _, _ = build(adapters=[Broken("report-github-issue")])
+        with self.assertRaisesRegex(WorkflowError, "open-source"):
+            engine.prepare_named("report-github-issue", frame(1))
+
+
 if __name__ == "__main__":
     unittest.main()

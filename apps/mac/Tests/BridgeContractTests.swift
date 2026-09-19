@@ -328,10 +328,17 @@ final class CoreLaunchSettingsTests: XCTestCase {
     }
 
     func testDiscoveredPythonPrefersExistingSystemBinary() {
-        guard FileManager.default.isExecutableFile(atPath: "/usr/bin/python3") else {
-            throw XCTSkip("No system python3 on this runner")
+        let candidates = [
+            "/opt/homebrew/bin/python3.14",
+            "/opt/homebrew/bin/python3.13",
+            "/opt/homebrew/bin/python3.12",
+            "/usr/local/bin/python3.12",
+            "/usr/bin/python3",
+        ]
+        guard let expected = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else {
+            return
         }
-        XCTAssertEqual(CoreLaunchSettings.discoveredPythonExecutable(), "/usr/bin/python3")
+        XCTAssertEqual(CoreLaunchSettings.discoveredPythonExecutable(), expected)
     }
 }
 

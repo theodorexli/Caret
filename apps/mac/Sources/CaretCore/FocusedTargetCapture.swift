@@ -8,6 +8,18 @@ import Foundation
 ///
 /// The core cannot see the screen, so anything this cannot actually determine
 /// is reported as a suppression rather than as a confident `false`.
+public struct HostContext: Equatable, Sendable {
+    public let pid: pid_t
+    public let bundleID: String
+    public let localizedName: String
+
+    public init(pid: pid_t, bundleID: String, localizedName: String) {
+        self.pid = pid
+        self.bundleID = bundleID
+        self.localizedName = localizedName
+    }
+}
+
 public final class FocusedTargetCapture {
     public struct Configuration: Sendable {
         public var excludedBundleIDs: Set<String>
@@ -129,6 +141,99 @@ public final class FocusedTargetCapture {
         lock.lock()
         lastKey = nil
         lock.unlock()
+    }
+
+    /// One monotonic revision shared with ambient `capture()`, so explicit
+    /// invoke and ambient ticks cannot reuse a revision the router has seen.
+    private func nextRevision() -> Int {
+        lock.lock()
+        revision += 1
+        let current = revision
+        lock.unlock()
+        return current
+    }
+
+    /// A frame for an explicit panel action. Capture stays paused; this does
+    /// not go through the ambient dedupe path.
+    public func explicitActionFrame(host: HostContext, complaint: String, now: Date = Date()) -> ContextFrame {
+        let trimmed = complaint.trimmingCharacters(in: .whitespacesAndNewlines)
+        let field: FocusedField?
+        if case .success(let resolved) = resolveFocusedField(hostPIDWhenCaretIsFrontmost: host.pid),
+           resolved.pid == host.pid {
+            field = resolved
+        } else {
+            field = nil
+        }
+
+        let rawText: String
+        if !trimmed.isEmpty {
+            rawText = trimmed
+        } else if let field {
+            rawText = field.value
+        } else {
+            rawText = ""
+        }
+        let text = Self.bound(rawText, limit: configuration.nearbyTextLimit)
+        let length = UTF16Text.length(text)
+        let usedField = trimmed.isEmpty && field != nil
+        let target: TargetIdentity
+        if usedField, let field {
+            target = TargetIdentity(
+                pid: field.pid,
+                bundleID: field.bundleID,
+                windowID: field.windowToken,
+                elementID: field.elementToken,
+                elementRevision: UTF16Text.digest(field.value)
+            )
+        } else {
+            target = TargetIdentity(
+                pid: host.pid,
+                bundleID: host.bundleID,
+                windowID: "",
+                elementID: "",
+                elementRevision: ""
+            )
+        }
+
+        let snapshot = InputSnapshot(
+            revision: nextRevision(),
+            capturedAt: now,
+            target: target,
+            role: field?.role ?? "",
+            nearbyText: text,
+            textOffset: 0,
+            caret: length,
+            selection: TextSelection(start: length, end: length),
+            valueLength: length
+        )
+
+        var clipboard = ClipboardContext.unavailable
+        if let paste = NSPasteboard.general.string(forType: .string) {
+            clipboard = ClipboardContext(
+                available: true,
+                text: Self.bound(paste, limit: CoreLimits.clipboardUnits),
+                capturedAt: nil
+            )
+        }
+
+        return ContextFrame(
+            snapshot: snapshot,
+            permissions: permissions(),
+            clipboard: clipboard,
+            sources: [
+                SourceRecord(name: "explicit_invoke", available: true, capturedAt: nil, detail: host.bundleID),
+                SourceRecord(name: "frontmost_app", available: true, capturedAt: nil, detail: host.localizedName),
+                SourceRecord(name: "clipboard", available: clipboard.available, capturedAt: nil),
+            ]
+        )
+    }
+
+    private static func bound(_ text: String, limit: Int) -> String {
+        let units = UTF16Text.length(text)
+        guard units > limit else { return text }
+        if let sliced = UTF16Text.slice(text, start: 0, end: limit) { return sliced }
+        if limit > 0, let sliced = UTF16Text.slice(text, start: 0, end: limit - 1) { return sliced }
+        return ""
     }
 
     // MARK: - Resolution
@@ -257,9 +362,8 @@ public final class FocusedTargetCapture {
         case .failure(let failure): return .suppressed(.nearbyTextUnbounded(failure), invalidatesPriorContext: false)
         }
 
+        let currentRevision = nextRevision()
         lock.lock()
-        revision += 1
-        let currentRevision = revision
         lastKey = key
         lock.unlock()
 

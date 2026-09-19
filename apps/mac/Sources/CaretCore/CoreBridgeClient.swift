@@ -126,10 +126,27 @@ public final class CoreBridgeClient: @unchecked Sendable {
         try await send(method: "workflows.list", params: EmptyParams(), as: WorkflowList.self).workflows
     }
 
+    public func prepareWorkflow(workflowID: String, frame: ContextFrame) async throws -> ActionOffer {
+        try await send(
+            method: "workflow.prepare",
+            params: PrepareParams(workflowID: workflowID, frame: frame),
+            as: PrepareResult.self
+        ).offer
+    }
+
     // MARK: - Request plumbing
 
     private struct EmptyParams: Encodable {}
     private struct FrameParams: Encodable { let frame: ContextFrame }
+    private struct PrepareParams: Encodable {
+        let workflowID: String
+        let frame: ContextFrame
+        enum CodingKeys: String, CodingKey {
+            case workflowID = "workflow_id"
+            case frame
+        }
+    }
+    private struct PrepareResult: Decodable { let offer: ActionOffer }
     private struct StoppedResult: Decodable { let stopped: Bool }
     private struct WorkflowList: Decodable { let workflows: [WorkflowSummary] }
     private struct DismissParams: Encodable {

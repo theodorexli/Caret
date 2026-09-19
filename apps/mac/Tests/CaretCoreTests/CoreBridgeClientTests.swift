@@ -60,6 +60,48 @@ final class CoreBridgeClientTests: XCTestCase {
         XCTAssertNil(clipboard?["text"])
     }
 
+    func testPrepareWorkflowEncodesTheFrameAndDecodesTheOffer() async throws {
+        let (client, transport) = try startedClient()
+
+        async let reply = client.prepareWorkflow(workflowID: "report-github-issue", frame: Fixtures.frame())
+        guard let id = transport.awaitRequest() else { return XCTFail("no request was written") }
+        let sent = try XCTUnwrap(transport.sentObject(at: 0))
+        XCTAssertEqual(sent["method"] as? String, "workflow.prepare")
+        let params = try XCTUnwrap(sent["params"] as? [String: Any])
+        XCTAssertEqual(params["workflow_id"] as? String, "report-github-issue")
+        XCTAssertNotNil(params["frame"])
+
+        transport.emit(line: """
+        {"id":\(id),"ok":true,"result":{"offer":{"kind":"action","proposal_id":"p-explicit","revision":3,\
+        "target":{"pid":4242,"bundle_id":"com.example.Editor","window_id":"","element_id":"",\
+        "element_revision":""},"workflow_id":"report-github-issue","title":"Open a GitHub issue",\
+        "effect":"Nothing until accept.","evidence":["No matching public issue was found."],\
+        "required_inputs":[],"missing_inputs":[],"execution_method":"computer-use-jev","sample_only":false}}}
+        """)
+
+        let offer = try await reply
+        XCTAssertEqual(offer.proposalID, "p-explicit")
+        XCTAssertEqual(offer.workflowID, "report-github-issue")
+        XCTAssertEqual(offer.executionMethod, "computer-use-jev")
+        XCTAssertTrue(offer.missingInputs.isEmpty)
+        XCTAssertFalse(offer.sampleOnly)
+    }
+
+    func testPrepareWorkflowSurfacesAWorkflowError() async throws {
+        let (client, transport) = try startedClient()
+
+        async let reply = client.prepareWorkflow(workflowID: "report-github-issue", frame: Fixtures.frame())
+        guard let id = transport.awaitRequest() else { return XCTFail("no request was written") }
+        transport.emit(line: #"{"id":\#(id),"ok":false,"error":{"code":"workflow_error","message":"This does not appear to be an open-source application."}}"#)
+
+        do {
+            _ = try await reply
+            XCTFail("expected the coded error to surface")
+        } catch let error as BridgeError {
+            XCTAssertEqual(error, .core(code: "workflow_error", message: "This does not appear to be an open-source application."))
+        }
+    }
+
     func testCodedErrorReplyBecomesATypedError() async throws {
         let (client, transport) = try startedClient()
 

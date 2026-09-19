@@ -1,6 +1,14 @@
 import AppKit
 import ApplicationServices
 
+enum ExplicitInvokeActions {
+    static let ids: Set<String> = ["report-github-issue"]
+
+    static func contains(_ actionID: String) -> Bool {
+        ids.contains(actionID)
+    }
+}
+
 enum GatewaySkillActions {
     static let ids: Set<String> = [
         "extract-tasks",
