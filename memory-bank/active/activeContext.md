@@ -1,7 +1,7 @@
 # Active Context
 
 ## Current Task: caret-screenpipe-history
-**Phase:** PLAN - COMPLETE
+**Phase:** BUILD - IN-PROGRESS
 
 ## What Was Done
 - Level 3 plan written: pin clipboard flag, newest-first last-N, `history-clipboard`, Swift supervisor using `CaretProjectRoot` + attach-if-healthy.

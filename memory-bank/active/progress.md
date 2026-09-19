@@ -28,3 +28,22 @@ Caret.app launches and supervises pinned Screenpipe 0.4.50 with clipboard histor
     - Preflight/QA model this run: Cursor Grok High Fast only (Gemini 3.8 Flash not in the subagent list)
 * Insights
     - `INFOPLIST_KEY_CaretProjectRoot` already points the app at the repo root for pin and lease paths
+
+## 2026-09-19 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Validated the L3 plan against the pin, last-N client, CLI, AppDelegate, Xcode CaretTests, and live `/health`
+    - Wrote `memory-bank/active/.preflight-status` with first line `PASS WITH ADVISORY`
+* Decisions made
+    - Plan is acceptable as-is; attach-if-healthy vs clipboard-on is advisory, not a blocking fail
+* Insights
+    - Live 0.4.50 on :3030 is healthy with `ui_recorder.clipboard_capture` false and no pid in `/health`
+    - CaretTests has no `TEST_HOST`; new Swift sources must compile into both Xcode targets
+
+## 2026-09-19 - BUILD - IN-PROGRESS
+
+* Work completed
+    - Incorporated preflight advisory: always spawn on port 3031 instead of attaching to launchd
+* Decisions made
+    - Operator said do not wait after preflight; build proceeds
+    - `history-clipboard` gets `--lease`; supervisor uses `CaretPaths.projectRoot`

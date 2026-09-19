@@ -66,9 +66,11 @@ None - implementation approach is clear. Decisions recorded here:
 
 - Clipboard storage: pin `launch` includes `--disable-clipboard-capture` `false`
 - Newest-first: do not reverse `/search` descending results; windows stay first-seen in that descending stream (most-recently-active)
-- Clipboard query: `GET /search?content_type=input&order=descending`, keep `event_type == "clipboard"`, take N
-- Lease path: `{CaretProjectRoot}/.local/screenpipe-lease.json` (`INFOPLIST_KEY_CaretProjectRoot` already set). Python default stays `.local/screenpipe-lease.json` (cwd = repo when using the CLI)
-- Already-running pin: if `/health` on the pin endpoint is the pin version, write the lease and do not spawn a second recorder. Otherwise spawn `pin.launch` and wait for health
+- Clipboard query: `GET /search?content_type=input&order=descending&limit=200`, keep `event_type == "clipboard"`, take N
+- Lease path: `{CaretProjectRoot}/.local/screenpipe-lease.json` via `CaretPaths.projectRoot`. Python default stays `.local/screenpipe-lease.json`
+- Always spawn on Caret-owned `--port` `3031`. Do not attach to launchd `:3030` (preflight advisory: leftover agent is 0.4.50 with clipboard off)
+- `history-clipboard` accepts `--lease` like the other history commands
+- `start` must not block the main thread
 - No TCC user docs in this task (brief constraint)
 
 ## Test Plan (TDD)
@@ -152,7 +154,7 @@ No new technology - validation not required. Uses existing `npx` pin, `Process`,
 
 ## Challenges & Mitigations
 
-- Port 3030 already bound by launchd `com.screenpipe.agent`: attach if `/health` version matches the pin; do not start a second recorder
+- Port 3030 already bound by launchd `com.screenpipe.agent`: Caret uses 3031 and always spawns; leave the leftover agent alone
 - `npx` not on app PATH: set process PATH to `/opt/homebrew/bin:/usr/bin:/bin` plus existing PATH
 - Installed app without a live SRCROOT: `CaretProjectRoot` is baked at build time; `make app` from this repo keeps it valid for the hackathon
 - Clipboard still empty after flag if the process was started without it: attach path only accepts a healthy pin-version server; a leftover recorder without clipboard will make `history-clipboard` hard-fail (honest empty)
