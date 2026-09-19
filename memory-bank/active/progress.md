@@ -45,3 +45,14 @@ Caret must launch pinned Screenpipe on app start when the expected port is free,
     - Adopted pid is `0` so Caret does not claim the foreign process
 * Insights
     - `run()` against a plain TCP bind would stall on `waitForHealth`; adopt tests need an HTTP stub
+
+## 2026-09-19 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Re-validated the re-planned tasks.md against the codebase: TDD ordering, conventions, dependencies, conflicts, completeness
+    - Result: `PASS WITH ADVISORY` - all seven checks pass; the prior `FAIL (fixable)` is resolved by the sentinel-`pid`-0 adopt behavior and its stub-`/health` test
+* Decisions made
+    - No plan edits needed this run; proceed to Build as-is
+* Insights
+    - `_require_health` in `caret/screenpipe.py` never reads `pid`, confirming sentinel `0` cannot trip the Python last-N hard-fail path
+    - Advisory (non-blocking, radical innovation): a generic `PinnedServiceSupervisor` could let future upstream supervisors (KeyType, GhostType, Computer Use Jev, Skyvern) reuse the launch-if-free/adopt-if-healthy/never-kill-foreign shape instead of reimplementing it per pin
