@@ -52,3 +52,15 @@ Add a Caret menu Debug item that shows a short last-2 preview of windows (recenc
     - `last_n_minutes` hydrates accessibility structure for the whole window before the debug cap; a glance window can stall unless build skips structure / caps records
     - App-spawned `python3` should reuse `ScreenpipeSupervisor` PATH/`env`, not assume a shell PATH
     - `CaretTests` only compiles listed files; `HistoryDebug.swift` must join that target
+
+## 2026-09-19 - BUILD - COMPLETE
+
+* Work completed
+    - Implemented `debug_preview`, `history-debug`, Swift format/command/load, Debug menu window
+    - `make check` passed (34 Python tests, pin check, SwiftPM build)
+    - `xcodebuild test` HistoryDebugTests: 3 passed
+* Decisions made
+    - Last-N gained optional `include_structure` and `record_cap`; inference defaults unchanged
+    - Debug window refreshes on appear by spawning `python3 -m caret history-debug`
+* Insights
+    - A minutes glance that hydrates accessibility for 200 hits is not a glance; skip structure and cap records

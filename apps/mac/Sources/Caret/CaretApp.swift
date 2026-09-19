@@ -669,6 +669,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var panel: CaretPanel?
     private var permissionPanel: NSPanel?
     private var settingsWindow: NSWindow?
+    private var debugWindow: NSWindow?
     private var model: Model?
     private var trustTimer: Timer?
     private var lastTarget: SelectionTarget?
@@ -730,6 +731,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         statusBar.onSettings = { [weak self] in
             self?.showSettingsWindow()
+        }
+        statusBar.onDebug = { [weak self] in
+            self?.showDebugWindow()
         }
         statusBar.onFixAccessibility = { [weak self] in
             self?.showPermissionWindow()
@@ -854,8 +858,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        guard (notification.object as? NSWindow) === settingsWindow else { return }
-        NSApp.setActivationPolicy(.accessory)
+        let closing = notification.object as? NSWindow
+        guard closing === settingsWindow || closing === debugWindow else { return }
+        let otherVisible = (closing === settingsWindow && debugWindow?.isVisible == true)
+            || (closing === debugWindow && settingsWindow?.isVisible == true)
+        if !otherVisible {
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -915,6 +924,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    func showDebugWindow() {
+        hidePanel()
+
+        if debugWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 460, height: 360),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "Caret Debug"
+            window.isReleasedWhenClosed = false
+            window.delegate = self
+            window.center()
+            debugWindow = window
+        }
+
+        debugWindow?.contentView = NSHostingView(rootView: CaretDebugView())
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        debugWindow?.makeKeyAndOrderFront(nil)
     }
 
     func showPermissionWindow() {

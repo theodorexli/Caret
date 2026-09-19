@@ -104,6 +104,6 @@ No new technology - validation not required. Reuses `python3 -m caret`, the exis
 - [x] Implementation plan complete
 - [x] Technology validation complete
 - [x] Pre-Mortem complete
-- [ ] Preflight
-- [ ] Build
+- [x] Preflight
+- [x] Build
 - [ ] QA

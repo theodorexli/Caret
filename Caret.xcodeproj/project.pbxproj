@@ -31,6 +31,10 @@
 		B1000000000000000000002E /* PinnedActionsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* PinnedActionsStoreTests.swift */; };
 		B10000000000000000000028 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* Assets.xcassets */; };
 		B1000000000000000000002A /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001A /* ApplicationServices.framework */; };
+		B10000000000000000000061 /* HistoryDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000060 /* HistoryDebug.swift */; };
+		B10000000000000000000062 /* HistoryDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000060 /* HistoryDebug.swift */; };
+		B10000000000000000000064 /* CaretDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000063 /* CaretDebugView.swift */; };
+		B10000000000000000000066 /* HistoryDebugTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000065 /* HistoryDebugTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +73,9 @@
 		B1000000000000000000001F /* CaretTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CaretTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1000000000000000000001A /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
+		B10000000000000000000060 /* HistoryDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryDebug.swift; sourceTree = "<group>"; };
+		B10000000000000000000063 /* CaretDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaretDebugView.swift; sourceTree = "<group>"; };
+		B10000000000000000000065 /* HistoryDebugTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryDebugTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -130,6 +137,8 @@
 				B10000000000000000000040 /* MemoryRepository.swift */,
 				B10000000000000000000042 /* CaretNote.swift */,
 				B10000000000000000000050 /* ScreenpipeSupervisor.swift */,
+				B10000000000000000000060 /* HistoryDebug.swift */,
+				B10000000000000000000063 /* CaretDebugView.swift */,
 				B10000000000000000000055 /* Info.plist */,
 				B10000000000000000000044 /* CaretPaths.swift */,
 				B10000000000000000000046 /* InstalledApps.swift */,
@@ -153,6 +162,7 @@
 			children = (
 				B1000000000000000000001E /* PinnedActionsStoreTests.swift */,
 				B10000000000000000000053 /* ScreenpipeSupervisorTests.swift */,
+				B10000000000000000000065 /* HistoryDebugTests.swift */,
 			);
 			name = CaretTests;
 			path = apps/mac/Tests;
@@ -217,6 +227,8 @@
 				B1000000000000000000002D /* PinnedActionsStore.swift in Sources */,
 				B10000000000000000000052 /* ScreenpipeSupervisor.swift in Sources */,
 				B10000000000000000000054 /* ScreenpipeSupervisorTests.swift in Sources */,
+				B10000000000000000000062 /* HistoryDebug.swift in Sources */,
+				B10000000000000000000066 /* HistoryDebugTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -293,6 +305,8 @@
 				B1000000000000000000003F /* MemoryRepository.swift in Sources */,
 				B10000000000000000000041 /* CaretNote.swift in Sources */,
 				B10000000000000000000051 /* ScreenpipeSupervisor.swift in Sources */,
+				B10000000000000000000061 /* HistoryDebug.swift in Sources */,
+				B10000000000000000000064 /* CaretDebugView.swift in Sources */,
 				B10000000000000000000043 /* CaretPaths.swift in Sources */,
 				B10000000000000000000045 /* InstalledApps.swift in Sources */,
 				B10000000000000000000047 /* AppReferenceIcon.swift in Sources */,
