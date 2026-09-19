@@ -24,3 +24,13 @@ Make Caret's last-N client (and Debug peek) authenticate to pinned Screenpipe 0.
     - Fail before calling `/search` when no token is available, instead of sending an unauthenticated request that 403s.
 * Insights
     - `/health` staying open while `/search` 403s is expected on 0.4.50; the lease can exist and peek still fail.
+
+## 2026-09-19 - QA - COMPLETE (PASS)
+
+* Work completed
+    - Semantic review of last-N Screenpipe auth against the brief and Level 1 plan.
+    - Wrote `memory-bank/active/.qa-validation-status` as PASS.
+* Decisions made
+    - Accept the implementation as-is. Advisories do not require a Build rerun.
+* Insights
+    - Lease readiness stays on the unauthenticated Swift `/health` wait. Python `_api` authenticating `/health` as well does not reintroduce the 403-as-health-failure bug.

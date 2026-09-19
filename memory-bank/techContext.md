@@ -14,7 +14,7 @@ Native Mac UI in Swift, local workflow core in Python 3.11+ with stdlib only, ru
 
 - `Makefile` is the command surface: `demo`, `app`, `test`, `check`, `sources`.
 - Mac executable: `Caret.xcodeproj`, with a parallel SwiftPM package for build checks. `scripts/run_mac.py` now uses Xcode and opens `.local/build/Debug/Caret.app`. On start the app resolves the pinned `screenpipe` Mach-O and bootstraps launchd job `dev.caret.hackathon.screenpipe` on port 3031 if that port is free. If the port is taken, it does not spawn. It writes `.local/screenpipe-lease.json` only when `/health` matches the pin version (an existing match gets lease `pid` 0). `CaretProjectRoot` in `apps/mac/Sources/Caret/Info.plist` is merged into the bundle so the supervisor, skills, memories, and notes resolve this repository. The app still does not invoke the Python planner.
-- Python is invoked as `python3 -m caret`. History commands are `history-windows`, `history-minutes`, `history-clipboard`, and `history-debug` (newest-first last-2 glance). Other operations are listed by `python3 -m caret --help`.
+- Python is invoked as `python3 -m caret`. History commands are `history-windows`, `history-minutes`, `history-clipboard`, and `history-debug` (newest-first last-2 glance). Last-N HTTP calls send `Authorization: Bearer` from `SCREENPIPE_LOCAL_API_KEY`, then `SCREENPIPE_API_KEY`, then pinned `screenpipe auth token`, plus `X-Screenpipe-Client: api`. `/health` stays unauthenticated. Other operations are listed by `python3 -m caret --help`.
 
 ## Testing Process
 
