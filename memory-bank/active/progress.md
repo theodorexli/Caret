@@ -169,3 +169,37 @@ Add a Caret skill that pauses the current app, understands a complaint, finds th
     - Router.accept compares the acceptance against _current_target as well as the offer, so capture must stay paused for the whole session
     - CaretPaths.skillsRoot is nil without a project root, so the picker identity needs both the JSON skill directory and the seeded note
     - actions.adapters() is asserted to hold exactly two ids, so test_the_action_table_matches_the_registered_ids is a planned modification, not a break
+
+## 2026-09-19 - PREFLIGHT - COMPLETE (FAIL (fixable))
+
+* Work completed
+    - Traced the full explicit-invoke path against current Swift and Python source under the wider operator override
+    - Verified the planned Cmd-1 arming, executable gate, offer replacement, panel stand-down and terminal resume directions, then checked one transition beyond each
+    - Wrote `memory-bank/active/.preflight-status` with first line `FAIL (fixable)`
+* Decisions made
+    - Did not edit the implementation plan because no TDD swap or change-detector strike applied
+    - Replan must cover stale ambient failures, offered-only choice ordering, real Escape cancellation fencing, lifecycle TDD coverage, issue-detail recommendation, and typed `gh` failures
+* Insights
+    - `Router.complete_failure` does not stale-check, so an ambient evaluation superseded by explicit install can still emit `failed` and disable Cmd-1 interception
+    - Retaining executing offers preserves terminal delivery but current visibility filters also keep those running records in UUID-sorted Cmd choices
+    - Cancelling a Swift bridge waiter cannot stop synchronous core preparation; late replies need an explicit session identity and disposal path
+    - Issue-list title/state data cannot satisfy the brief's requirement to summarize an existing report and judge whether the complaint adds information
+
+## 2026-09-19 - PLAN - COMPLETE
+
+* Work completed
+    - Replan 6: dropped `gh`; public GitHub HTTP for research; auth only at Jev submit
+    - Folded Sol-5 findings as GSD patches
+* Decisions made
+    - No Caret GitHub token on prepare
+    - `SearchFailed` is not not-OSS
+    - No session state machine
+
+## 2026-09-19 - BUILD - IN-PROGRESS
+
+* Work completed
+    - Operator invoked `/niko-build` and overrode the leftover replan-5 `FAIL (fixable)` gate: do not re-preflight, do not ask for plan review
+* Decisions made
+    - Build replan 6 as written
+* Insights
+    - No creative-phase docs exist for this task

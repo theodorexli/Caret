@@ -37,7 +37,7 @@ The app I am in is not a public GitHub project I can search and file issues agai
 4. Live credentials and personal data stay out of Git. GitHub access needs explicit configuration.
 5. Preserve Caret's selected upstreams and existing owner boundaries. This is a new skill/workflow on the existing contracts, not a second judge or history engine.
 6. Hackathon bias: happy-path ship; fail fast on non-OSS rather than building a vendor-tracker framework.
-7. Prefer existing capabilities over new ones. Do not add a GitHub REST client or PyGithub. `prepare` may use the already-present `gh` CLI for read-only search. `execute` must defer the write to the existing computer-use-jev runner (same pattern as `NativeComputerUseWorkflow`), not invent a second browser engine or a `gh issue create` happy path.
+7. Prefer existing capabilities over new ones. Do not add PyGithub or the `gh` CLI. `prepare` researches with the public GitHub HTTP API and no token. Auth is required only if the user accepts a write; that write is computer-use-jev in the user's browser session, not `gh issue create` and not a Caret-held GitHub token.
 8. Explicit invoke is a `workflow.prepare` request-reply on the live bridge. Accept is existing `offer.accept`. Do not use ambient `submit`/`failed` events for this invoke. Do not add a parallel CLI accept protocol.
 
 ## Acceptance Criteria

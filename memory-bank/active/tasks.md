@@ -4,9 +4,9 @@
 * Complexity: Level 3
 * Type: feature
 
-A Caret action the user picks from the panel to pause and report a problem with the app they were just in. The workflow reads the complaint from an explicitly captured context frame, resolves that app's public GitHub repository, searches its issues read-only with `gh`, and mints one offer: comment on a match, or open a new issue. The accepted write runs through computer-use-jev. An app with no public GitHub issue target fails fast with an explicit sentence.
+A Caret action the user picks from the panel to pause and report a problem with the app they were just in. The workflow reads the complaint from an explicitly captured context frame, resolves that app's public GitHub repository, and searches its issues with the **public GitHub HTTP API and no token**. It mints one offer: comment on a match, or open a new issue. The accepted write runs through computer-use-jev in the user's browser session. Auth is required only then, and only as whatever GitHub login the browser already has. An app with no public GitHub issue target fails fast with an explicit sentence.
 
-This is replan 5. Preflights 1–4 each found one more hole in the Mac invoke path after the previous one was patched. This pass traces the whole path in the current source rather than folding the last finding, so the specification below names every step that can drop the host app, hide the accept UI, poison completions, race the ambient router, or cover Jev.
+This is replan 6. Operator: hackathon GSD, no `gh`, public research only. Sol preflight 5's six findings are folded as the smallest happy-path patches, not a session state machine.
 
 ## Pinned Info
 
@@ -26,9 +26,9 @@ flowchart TD
     Stay --> Frame["explicitActionFrame(host:complaint:) + pasteboard"]:::local
     Frame --> Prepare["workflow.prepare request-reply"]:::local
     Prepare --> Resolve["Resolve a public GitHub repo with issues"]:::local
-    Resolve -->|"no repo / no gh / empty complaint"| Fail["workflow_error reply"]:::fail
+    Resolve -->|"no repo / search failed / empty complaint"| Fail["workflow_error reply"]:::fail
     Fail --> Row["explicitStatus row beside actionOffers"]:::local
-    Resolve -->|"repo with issues"| Search["gh issue list --search, read-only"]:::local
+    Resolve -->|"repo with issues"| Search["GET api.github.com search, no token"]:::local
     Search --> Install["Router.install_offer, no submit"]:::local
     Install --> Reply["Reply carries the offer"]:::local
     Reply --> Sync["Provider replaces its offer set, fires onActionsChanged"]:::local
@@ -76,7 +76,7 @@ sequenceDiagram
 
 #### Python core
 
-- `caret/live_workflows/github.py` (new): injectable read-only `gh` port plus pure resolution logic. Owns `NotOpenSource`, `NoComplaint`, `GhMissing` — all subclasses of `caret.registry.WorkflowError`, so `Bridge._handle_line` already maps them to the `workflow_error` code. Owns the non-GitHub-tracker extension-point comment.
+- `caret/live_workflows/github.py` (new): injectable public GitHub HTTP port (stdlib `urllib`, no token, no `gh`). Owns `NotOpenSource`, `NoComplaint`, `SearchFailed` — all subclasses of `caret.registry.WorkflowError`. A 404 or empty public search is not-OSS. A timeout, 403 rate limit, or malformed JSON is `SearchFailed` ("Could not search GitHub issues"), never not-OSS. Owns the non-GitHub-tracker extension-point comment.
 - `caret/live_workflows/report_issue.py` (new): `ReportGithubIssueWorkflow`. Descriptor `execution_method="computer-use-jev"`, `sample_only=False`, and `prepare` never returns `missing_inputs`. All three matter: `CaretActionOffer.isExecutable` requires a non-placeholder method, `sample_only == false` and empty `missing_inputs`, and `visibleExecutableActions` filters on `isExecutable`, so any other combination makes the offer invisible to Cmd-1. `availability` is False unless the frame carries a `SourceRecord(name="explicit_invoke", available=True)`, keeping the id out of `registry.choices()` for a jev/gateway judge. `execute` mirrors `NativeComputerUseWorkflow`: pop a token, refuse unless `preparation`, `frame.snapshot` and age all match, then run a **templated** goal — never the raw complaint as a free-form goal.
 - `caret/router.py`: new `Router.install_offer(frame, offer)`.
 - `caret/engine.py`: new `Engine.prepare_named(workflow_id, frame)`.
@@ -114,23 +114,23 @@ sequenceDiagram
 
 ### Invariants and Constraints
 
-- `prepare` must not send, write or navigate. Only `gh` reads.
+- `prepare` must not send, write or navigate. Research is unauthenticated GET to `api.github.com` only.
 - `execute` runs only from an accepted offer whose preparation token, snapshot and age all still match.
 - Never invent a repository, an issue number or a fact. A failed lookup is a visible sentence, not a guess.
 - Writes go only through computer-use-jev, driven by a templated goal chosen in code, never by model- or user-supplied free text.
-- Not-open-source, empty complaint and missing `gh` are `workflow_error` replies. No `failed` event on this path: `CoreBridgeProvider.handle(.failed)` sets `unavailableText` and disables inline completions, which is a completion-backend outage, not a skill outcome.
+- Not-open-source, empty complaint and `SearchFailed` are `workflow_error` replies. No `failed` event on this path.
 - The panel stays visible and capture stays paused from the moment the action is picked until the offer is accepted or the session is cancelled.
 - After acceptance the panel is ordered out before Jev runs, without `hidePanel`.
 - Capture is resumed exactly once, on the run's terminal state.
 - The explicit offer is the only offer while the session is live, so Cmd-1 is deterministic.
-- No GitHub REST client, no `gh issue create` happy path, no `--frame` CLI, no second bridge, no `CaretCLI` source-string test.
+- No PyGithub, no `gh` binary, no Caret-held GitHub token on prepare. No `--frame` CLI, no second bridge, no `CaretCLI` source-string test.
 - Non-GitHub trackers stay a code comment, not a code path.
 
 ## Open Questions
 
-- [x] GitHub I/O → `gh` search in prepare; computer-use-jev write after accept
+- [x] GitHub I/O → public `api.github.com` GET, no token, in prepare; computer-use-jev write after accept (browser session is the only auth)
 - [x] Invoke → picker row + `workflow.prepare` request-reply + existing `offer.accept`
-- [x] App → repo → evidenced GitHub URL in the complaint, else `gh search repos` on `frontmost_app`
+- [x] App → repo → evidenced GitHub URL in the complaint, else public repo search on `frontmost_app`
 - [x] Mac frame → `explicitActionFrame(host:complaint:)`, pasteboard always read
 - [x] Accept without a text field → pid and bundle id only
 - [x] Default registry → built-in in `build_registry`, seed skipped
@@ -140,6 +140,8 @@ sequenceDiagram
 - [x] Cmd-1 arming → the reply offer is installed in the provider's own store so `onActionsChanged` reaches `syncActionOffers`
 - [x] Panel over Jev → `standDownForExplicitRun` orders out after the synchronous claim
 - [x] Search field text → `Model.trimmedPanelQuery` is the complaint when non-empty
+- [x] No `gh` → public `api.github.com` GET, no token; auth only at Jev submit
+- [x] Sol-1..6 GSD → stale `complete_failure` discarded; Cmd-1 is `.offered` only; Escape bumps generation; no extra SwiftUI lifecycle suite; issue body GET for recommend; `SearchFailed` ≠ not-OSS
 
 ## Test Plan (TDD)
 
@@ -147,13 +149,13 @@ sequenceDiagram
 
 #### `caret/live_workflows/github.py`
 
-- Complaint text containing a `github.com/<owner>/<repo>` URL → that repo, `evidence == "url"`, no `gh search repos` call
-- No URL, `frontmost_app` detail set → `gh search repos` is called with that display name, first public non-archived result with issues enabled wins, `evidence == "gh-search"`
-- No URL and no usable search result → raises `NotOpenSource` carrying the sentence
+- Complaint text containing a `github.com/<owner>/<repo>` URL → that repo, `evidence == "url"`, no repo-search HTTP call
+- No URL, `frontmost_app` detail set → `GET /search/repositories` with that display name, first public non-archived result with issues enabled wins, `evidence == "api-search"`
+- No URL and no usable public result → raises `NotOpenSource`
 - Complaint empty after trimming nearby text and clipboard → raises `NoComplaint`
-- `gh` not on PATH → raises `GhMissing`
-- Issue search returns a match → `recommend` returns comment mode with that issue
-- Issue search returns nothing → `recommend` returns new-issue mode
+- Timeout, HTTP 403, or bad JSON → raises `SearchFailed`, not `NotOpenSource`
+- Issue search returns a match → GET that issue's body; if the complaint has tokens absent from title+body, recommend comment; if already covered, summarize and do not recommend a comment
+- Issue search returns nothing → new-issue mode
 
 #### `caret/live_workflows/report_issue.py`
 
@@ -162,15 +164,16 @@ sequenceDiagram
 - `availability` on a frame with no `explicit_invoke` source → `Availability(False, …)`; with the source and a configured binary and key → available
 - `execute` with a matching preparation → spawns the executor exactly once, with a goal built from the template, not from the complaint
 - `execute` with an unknown, expired or tampered token, or a changed `frame.snapshot` → `failed`, nothing spawned
-- `execute` with `payload["repo_source"]` outside `{"url", "gh-search"}` → `failed`, nothing spawned
-- Executor missing → `prepare` still succeeds when it was invoked explicitly; `execute` returns `failed`
+- `execute` with `payload["repo_source"]` outside `{"url", "api-search"}` → `failed`, nothing spawned
+- Executor missing → `prepare` still succeeds when invoked explicitly; `execute` returns `failed`
 
 #### `caret/router.py`
 
-- `install_offer` leaves `_pending` None and `_in_flight` untouched; a following `take_due` returns None for that frame
+- `install_offer` leaves `_pending` None; a following `take_due` returns None for that frame
 - `install_offer` sets `_current_target` and `_highest_revision` from the frame, so a subsequent `accept` with the offer's own target succeeds
 - `install_offer` emits `invalidated` for a previously current offer
 - An ambient evaluation already in flight that calls `complete_offer` after `install_offer` publishes `discarded`, and `current_offer` is still the installed one
+- An ambient `complete_failure` after `install_offer` of a newer frame publishes `discarded` and does **not** emit `failed` or set `_failed_at` (hackathon: `is_stale` on `complete_failure`, same as `complete_offer`)
 - `install_offer` with a revision not above `_highest_revision` raises
 
 #### `caret/engine.py`
@@ -216,19 +219,19 @@ sequenceDiagram
 
 - Files: `caret/live_workflows/github.py`, `tests/test_report_issue.py`
 
-1. Stub tests: in `tests/test_report_issue.py`, empty cases for URL wins, `frontmost_app` search wins, not-open-source raises, empty complaint raises, missing `gh` raises, match recommends a comment, no match recommends a new issue.
-2. Stub interface: `Repo`, `IssueMatch`, `GhPort` protocol, `SubprocessGh`, `NotOpenSource`, `NoComplaint`, `GhMissing`, `NOT_OPEN_SOURCE_SENTENCE`, `complaint_from(frame)`, `display_name(frame)`, `repo_from_text(text)`, `resolve_repo(frame, gh)`, `search_issues(gh, repo, complaint)`, `recommend(matches, complaint)`. Add the module comment naming the later non-GitHub tracker hook: a new `Tracker` port would slot in beside `GhPort`, with `resolve_repo` returning a tracker-agnostic target.
-3. Write tests and run red: a fake `GhPort` records its calls; assert the URL case never calls `search_repos`, assert the sentence text, assert `Repo.evidence`.
-4. Write code and run green: `complaint_from` uses trimmed `frame.snapshot.nearby_text`, falling back to `frame.clipboard.text` when the clipboard is available; `display_name` reads the `frontmost_app` source record's `detail` and falls back to the bundle-id tail; `SubprocessGh` runs `gh search repos` and `gh issue list --repo … --search … --state all --json number,title,url,state --limit 5` with a timeout, and nothing else.
+1. Stub tests: URL wins, `frontmost_app` search wins, not-open-source, empty complaint, `SearchFailed` vs not-OSS, match with new tokens → comment, match already covered → no comment, no match → new issue.
+2. Stub interface: `Repo`, `IssueMatch`, `GitHubPort` protocol, `PublicGitHub`, `NotOpenSource`, `NoComplaint`, `SearchFailed`, `complaint_from`, `display_name`, `repo_from_text`, `resolve_repo`, `search_issues`, `recommend`. Tracker-hook comment beside the port.
+3. Write tests and run red: fake `GitHubPort`; URL case never calls `search_repos`; 403 is `SearchFailed`; empty items is `NotOpenSource`.
+4. Write code and run green: `PublicGitHub` uses stdlib `urllib` against `https://api.github.com` with a `User-Agent` and **no Authorization header**. Calls: `GET /search/repositories`, `GET /search/issues`, `GET /repos/{owner}/{repo}/issues/{n}` for the first match's body only. Timeout bounded. Nothing else.
 
 ### 2. Workflow adapter — executable
 
 - Files: `caret/live_workflows/report_issue.py`, `tests/test_report_issue_workflow.py`
 
-1. Stub tests: empty cases for descriptor fields, availability with and without the `explicit_invoke` source, prepare spawns nothing, prepare raises the three typed errors, execute spawns once with a templated goal, execute refuses an unknown or expired token, execute refuses a changed snapshot, execute refuses a bad `repo_source`.
-2. Stub interface: `WORKFLOW_ID = "report-github-issue"`, `EXPLICIT_SOURCE = "explicit_invoke"`, `GOAL_NEW`, `GOAL_COMMENT`, and `ReportGithubIssueWorkflow` with `descriptor`, `availability`, `prepare`, `execute`, `cancel` and an injectable `gh`, `environ`, `clock` and `timeout`.
-3. Write tests and run red: inject a fake `GhPort` and a fake spawn hook; assert `descriptor.execution_method == "computer-use-jev"`, `descriptor.sample_only is False`, `prepare(...).missing_inputs == ()`, and that the goal string passed to the executor is one of the two templates with only the slug or issue URL interpolated.
-4. Write code and run green: `availability` returns False with a reason unless `EXPLICIT_SOURCE` is present and available, then applies the same binary, key and Accessibility checks `NativeComputerUseWorkflow.availability` uses. `prepare` raises the typed errors, searches, and returns a `Preparation` whose payload carries `token`, `mode`, `repo_slug`, `repo_source`, `issue_url` and `complaint`; it records `self.pending[token] = (clock(), frame.snapshot, preparation)` and prunes entries older than 30 s. `execute` pops the token, refuses on mismatch or a `repo_source` outside `{"url", "gh-search"}`, then runs the executor with the same subprocess, timeout, SIGINT, trace-bound and key-redaction handling as `NativeComputerUseWorkflow.execute`.
+1. Stub tests: descriptor fields, availability with and without `explicit_invoke`, prepare spawns nothing, prepare raises the three typed errors, execute spawns once with a templated goal, execute refuses bad tokens/snapshots/`repo_source`.
+2. Stub interface: `ReportGithubIssueWorkflow` with injectable `github`, `environ`, `clock`, `timeout`.
+3. Write tests and run red: fake `GitHubPort` and fake spawn; goal is a template with only slug or issue URL interpolated.
+4. Write code and run green: `prepare` uses the public port only. Payload `repo_source` is `"url"` or `"api-search"`. `execute` refuses any other `repo_source`, then runs computer-use-jev the same way `NativeComputerUseWorkflow` does. No GitHub token is read for execute.
 
 ### 3. Built-in registration and picker identity — executable
 
@@ -243,11 +246,11 @@ sequenceDiagram
 
 - Files: `caret/router.py`, `caret/engine.py`, `caret/bridge.py`, `tests/test_router.py`, `tests/test_engine.py`, `tests/test_bridge.py`
 
-1. Stub tests: in `tests/test_router.py`, empty cases for pending cleared, `take_due` None, target and revision moved, old offer invalidated, in-flight ambient discarded, revision-not-newer raises. In `tests/test_engine.py`, empty cases for the returned offer, no `submit`, unregistered id raises, adapter error propagates. In `tests/test_bridge.py`, empty cases for the success reply, the `workflow_error` reply and the absence of a `failed` event.
+1. Stub tests: in `tests/test_router.py`, pending cleared, `take_due` None, target/revision moved, old offer invalidated, in-flight ambient `complete_offer` discarded, in-flight ambient `complete_failure` discarded (no `failed`), revision-not-newer raises. In `tests/test_engine.py`, returned offer, no `submit`, unregistered id, adapter error. In `tests/test_bridge.py`, success reply, `workflow_error` reply, no `failed` event.
 2. Stub interface: `Router.install_offer(self, frame: ContextFrame, offer: Offer) -> Offer`; `Engine.prepare_named(self, workflow_id: str, frame: ContextFrame) -> Offer`; `Bridge._prepare(self, params: dict) -> dict` plus the `workflow.prepare` dispatch arm.
 3. Write tests and run red: spy on `on_invalidate` and `on_publish` to assert exactly which lifecycle callbacks fire.
 4. Write code and run green.
-   - `install_offer` takes `_lock`, raises `WorkflowError` when `frame.revision <= self._highest_revision`, then sets `_highest_revision` and `_current_target` from the frame, sets `_pending = None`, calls `_invalidate_locked("replaced-by-explicit-invoke")` and assigns `_offer`. It does not touch `_in_flight`, `_last_started`, `_failed_at`, `_suppressed` or `_consumed`, and it does not consult `suppression_reason` or the cadence. Moving `_highest_revision` and `_current_target` is what makes any ambient evaluation already in flight fail `is_stale`, so its `complete_offer` publishes `discarded` instead of overwriting the installed offer.
+   - `install_offer` takes `_lock`, raises `WorkflowError` when `frame.revision <= self._highest_revision`, then sets `_highest_revision` and `_current_target` from the frame, sets `_pending = None`, calls `_invalidate_locked("replaced-by-explicit-invoke")` and assigns `_offer`. It does not take `_in_flight`. Moving revision and target makes an in-flight ambient `complete_offer` stale. **`complete_failure` must call `is_stale` the same way:** a stale ambient failure publishes `discarded` and does not set `_failed_at` or emit `failed`. That is the whole Sol-1 patch. No session object.
    - `prepare_named` calls `registry.get`, then `adapter.prepare(frame)`, then `build_action_offer`, then `install_offer`, and returns the offer. It does not call `availability`: the availability gate exists only to keep the id out of `registry.choices()`.
    - `Bridge._prepare` validates a non-empty string `workflow_id`, parses the frame with `ContextFrame.from_dict`, and replies `{"offer": offer.to_dict()}`. The dispatch arm must **not** call `self._wake.set()`. `WorkflowError` reaches the existing handler and becomes `workflow_error`; `ContextError` becomes `invalid_context`.
 
@@ -255,7 +258,7 @@ sequenceDiagram
 
 - Files: `apps/mac/Sources/CaretCore/FocusedTargetCapture.swift`, `apps/mac/Sources/CaretCore/CoreBridgeClient.swift`, `apps/mac/Sources/Caret/CoreBridgeProvider.swift`, `apps/mac/Sources/Caret/SkillActionRunner.swift`, `apps/mac/Sources/Caret/CaretApp.swift`, `apps/mac/Tests/CaretCoreTests/CoreJSONShapeTests.swift`, `apps/mac/Tests/CaretCoreTests/CoreBridgeClientTests.swift`, `apps/mac/Tests/ActionAcceptanceTests.swift`
 
-1. Stub tests: empty cases for the revision sequence, the pasteboard read with `clipboardEnabled` false, the complaint-in-`nearbyText` offsets, the no-field snapshot JSON shape, the two source records, `hostMismatch` in four states, and the `workflow.prepare` encode and decode over `FakeTransport`.
+1. Stub tests: revision sequence, pasteboard-on, complaint offsets, no-field JSON shape, source records, `hostMismatch`, `workflow.prepare` encode/decode. Hackathon: do **not** add a SwiftUI lifecycle matrix (Sol-4). The Python router/bridge tests cover the races.
 2. Stub interface:
    - `public struct HostContext: Equatable, Sendable { public let pid: pid_t; public let bundleID: String; public let localizedName: String }` in `FocusedTargetCapture.swift`.
    - `public func explicitActionFrame(host: HostContext, complaint: String, now: Date = Date()) -> ContextFrame` and a private `nextRevision()` used by both it and `snapshot(from:)`.
@@ -268,7 +271,7 @@ sequenceDiagram
 4. Write code and run green, in this order.
    - **`FocusedTargetCapture.explicitActionFrame(host:complaint:)`.** Take `nextRevision()` from the same lock-guarded counter `snapshot(from:)` uses, so explicit and ambient revisions form one monotonic sequence — `Router._highest_revision` is shared between them. Choose the text: a non-empty `complaint` wins; otherwise the focused field's value via `liveTarget(allowingCaretPanelForPID: host.pid)` when its `target.pid == host.pid`; otherwise `""`. Bound the text to `configuration.nearbyTextLimit`. Set `textOffset = 0`, `caret` and `selection` to the UTF-16 length of the text, `valueLength` to the same, and `role` to the live field's role or `""`. Use the live field's `TargetIdentity` when a field was used, otherwise `TargetIdentity(pid: host.pid, bundleID: host.bundleID, windowID: "", elementID: "", elementRevision: "")` — the two empty strings are the discriminator `runAction` keys its no-field branch on. Read `NSPasteboard.general.string(forType: .string)` unconditionally, bounded to `CoreLimits.clipboardUnits`; do not change `clipboardContext(now:)` or the `clipboardEnabled` default, which the ambient path still owns. Attach `SourceRecord(name: "explicit_invoke", available: true, capturedAt: nil, detail: host.bundleID)`, `SourceRecord(name: "frontmost_app", available: true, capturedAt: nil, detail: host.localizedName)` and a clipboard record. Every `capturedAt` is nil so `ContextFrame.stale_sources` can never suppress this frame.
    - **`CoreBridgeClient.prepareWorkflow`.** One `send`, no event handling.
-   - **`CoreBridgeProvider.prepareWorkflow`.** Factor the `CaretActionOffer` construction currently inline in `handle(.offer(.action))` into a `private static func record(from: ActionOffer) -> CaretActionOffer` and use it from both. On success, set `actionOffers = actionOffers.filter { executing.contains($0.key) }` before inserting the new record, then call `onActionsChanged?()`. Both halves are load-bearing: `visibleExecutableActions` sorts by `proposalID`, so leaving an ambient offer in the store would let it take Cmd-1; and `onActionsChanged` is the only thing that reaches `AppDelegate.syncActionOffers`, which is the only place `setVisibleChoiceCount` is armed. Setting `model.actionOffers` directly would be overwritten by the next offer event and would never arm the chord.
+   - **`CoreBridgeProvider.prepareWorkflow`.** Factor `record(from:)` and use it from handle and prepare. On success, drop every offer that is not this one and not `.running` for terminal delivery, then insert the explicit record and fire `onActionsChanged?()`. **`visibleExecutableActions` / `runnableOffers` include only `.offered` records** so a leftover `.running` ambient action cannot take Cmd-1 (Sol-2). Do not set `model.actionOffers` directly.
    - **`CoreBridgeProvider.runAction`.** Branch before the existing revalidation: when `offer.target.elementID.isEmpty && offer.target.windowID.isEmpty`, call `hostMismatch(offerTarget:host:)` built from `NSRunningApplication(processIdentifier: offer.target.pid)` and finish as `.unavailable` on a sentence; otherwise keep the existing `liveTarget` and `staleness` path unchanged. Either way, send `offer.target` to `offer.accept` — `Router.accept` compares it against both the stored offer and `_current_target`, and a rebuilt live-field target would match neither.
    - **`ExplicitInvokeActions`** in `SkillActionRunner.swift`. `SkillActionRunner.run` is untouched and still refuses non-gateway ids; nothing on the explicit path calls it.
    - **`Model`.** Add the three published properties and the three mutators. In `selectActionFromPanel`, branch on `ExplicitInvokeActions.contains(action.id)` **before** the gateway branch and call `run(action, skill: nil)` without setting `scopedActionID` — one click, and `filteredSkills` never enters the path, which is what made the previous status-row placement invisible. Add the same branch to `run(skill:)` keyed on `skill.actionID`, so the pinned and scoped routes reach the same place. Clear the explicit state in `preparePanel(scopedActionID:)` and `clearPanelScope()` so a stale sentence never reappears in a new session.
@@ -276,7 +279,7 @@ sequenceDiagram
    - **`AppDelegate.showPanel`.** As the first statement, before `trigger.hide()` and before `panel?.present`, set `hostContext` from `NSWorkspace.shared.frontmostApplication` when that app is not Caret, keeping the previous value otherwise. `SelectionMonitor.inspect` publishes nil as soon as Caret is frontmost and `lastTarget` follows it within about 200 ms, so the host must be captured here or it is gone.
    - **`AppDelegate.onRun`.** Move the `ExplicitInvokeActions` branch above the existing `freshTargetForGatewayAction()` call, which calls `monitor.refreshNow()` and would churn `lastTarget`. The branch calls `runExplicitInvoke` and returns, so it never reaches `hidePanel()` — `hidePanel` unpauses capture, clears the panel scope and re-activates the host, and the next capture tick would fire `onContextInvalidated` and drop the offer before it arrives.
    - **`AppDelegate.runExplicitInvoke(action:model:)`.** Refuse with a sentence when `hostContext` is nil. Otherwise `model.beginExplicitInvoke(actionID:)`, build the frame with `capture.explicitActionFrame(host:complaint: model.trimmedPanelQuery)`, and `await bridge?.prepareWorkflow(id:frame:)`. On success call `model.finishExplicitInvoke()` and let the offer row carry the UI. On `BridgeError.core(_, let message)` call `model.failExplicitInvoke(message)`; on anything else use a fixed sentence. The panel is never hidden and capture is never unpaused here.
-   - **`AppDelegate.installClickOutside`.** Return early from the click handler while `model?.explicitPrepareInFlight == true`, so a click during the `gh` wait cannot hide the panel and strand an armed offer behind it. Escape still calls `hidePanel`, which is the deliberate cancel.
+   - **`AppDelegate.installClickOutside`.** Return early while `explicitPrepareInFlight`. Escape still `hidePanel`s. Bump an `explicitPrepareGeneration` Int on cancel/hide and ignore a prepare reply whose generation does not match (Sol-3). Do not cancel the Python request; dropping the reply is enough for the demo.
    - **`AppDelegate` accept path.** Wrap `model.onRunAction` so it reads `bridge?.actionOffer(id:)?.workflowID` first, calls `bridge?.runAction(proposalID:)` — whose claim into `executing` is synchronous and taken before any await — and then, for an explicit workflow id, calls `standDownForExplicitRun()`: `panel?.orderOut(nil)`, `panel?.resignKey()`, `removeClickOutside()`, `inlineCompletion?.setVisibleChoiceCount(0)`. Deliberately not `hidePanel()`: `CaretPanel.level` is `.floating`, so the panel would otherwise sit over the browser Jev is driving, while `hidePanel`'s `setPaused(false)`, `clearPanelScope()` and `restoreTypingAppFocus()` would resume capture and re-activate the host mid-run.
    - **`AppDelegate` resume.** In the `provider.onActionStateChange` handler, when the proposal is the explicit one and the state is `.succeeded`, `.failed`, `.cancelled` or `.unavailable`, call `resumeAfterExplicitRun(summary:)`: `inlineCompletion?.setPaused(false)`, `model?.clearPanelScope()`, `trigger.update(target: lastTarget)`, `tabCompletions.update(target: lastTarget)`, then set `model.explicitStatus` to the run's summary so the next panel open shows what happened. This is the only place capture resumes on the accept path; without it the pause outlives the run and inline completions stay dead for the session.
 
@@ -286,14 +289,14 @@ sequenceDiagram
 - No tests: prose/policy artifact
 
 1. `docs/bridge-protocol.md`: document `workflow.prepare` as request-reply, its params and reply shape, its error codes, and the rule that it emits no event.
-2. `docs/live-workflow-adapters.md`: document the built-in registration, the explicit-invoke availability gate, the read-only `gh` prepare, the templated Jev goals and the fail-fast sentence.
+2. `docs/live-workflow-adapters.md`: document built-in registration, the explicit-invoke gate, public unauthenticated GitHub research, templated Jev writes, and the fail-fast sentence.
 3. `docs/input-pipeline.md`: document the explicit-invoke lane — host freeze, paused capture, panel stay, deterministic Cmd-1, stand-down before Jev, resume on terminal state — and its ownership boundary against the ambient lane.
 
 ## Technology Validation
 
-No new dependencies, build-tool changes or configuration additions. `gh` is already installed at `/opt/homebrew/bin/gh` and is invoked as a subprocess through an injectable port. The executor is the already-pinned computer-use-jev binary, reached exactly as `NativeComputerUseWorkflow` reaches it.
+No new dependencies. Research is stdlib `urllib` to `api.github.com` with no token. Writes are the pinned computer-use-jev binary, same as `NativeComputerUseWorkflow`.
 
-Build-time prerequisites, all pre-existing: `CARET_PROJECT_ROOT` or the `CaretProjectRoot` Info.plist key must point at the checkout, because `CaretPaths.skillsRoot` is nil without it and the action would not appear in the picker; `CARET_COMPUTER_USE_JEV` and `TYPESAFE_API_KEY` must be set for `execute`; `gh` must be authenticated for `prepare`.
+Prepare needs network. Execute needs `CARET_COMPUTER_USE_JEV` and `TYPESAFE_API_KEY`, plus the user already logged into GitHub in their browser. The picker needs `CARET_PROJECT_ROOT` / `CaretProjectRoot`. No `gh`. No GitHub token in Caret.
 
 ## Challenges & Mitigations
 
@@ -302,15 +305,15 @@ Build-time prerequisites, all pre-existing: `CARET_PROJECT_ROOT` or the `CaretPr
 - **Cmd-1 never armed.** `setVisibleChoiceCount` is only touched by `syncActionOffers`. Mitigated by installing the reply offer in the provider's own store and firing `onActionsChanged`.
 - **Cmd-1 addressing the wrong offer.** `visibleExecutableActions` sorts by `proposalID`, which is a UUID. Mitigated by dropping every non-executing offer when the explicit one is installed.
 - **Offer invisible despite arriving.** `isExecutable` requires empty `missing_inputs`, `sample_only == false` and a non-placeholder `execution_method`. Mitigated by pinning all three on the descriptor and by never returning `missing_inputs` from `prepare`.
-- **Ambient race.** Mitigated by `install_offer` moving `_highest_revision` and `_current_target` and clearing `_pending`, so a pending frame is never evaluated and an in-flight one is discarded.
+- **Ambient race.** `install_offer` moves revision and target and clears `_pending`. Stale `complete_failure` is discarded, not `failed`.
 - **Accept refused as a moved target.** `Router.accept` also compares against `_current_target`. Mitigated by keeping capture paused for the whole session, so no `context.update` moves it, and by sending the offer's own target.
 - **Completions poisoned.** A `failed` event sets `unavailableText` and disables inline completions. Mitigated by making every explicit failure a `workflow_error` reply and by keeping `explicitStatus` separate from `backendStatus`, so even an unrelated late `failed` cannot replace the sentence.
 - **Panel over Jev.** `CaretPanel.level` is `.floating`. Mitigated by `standDownForExplicitRun` ordering out after the synchronous claim.
 - **Capture paused forever.** Mitigated by `resumeAfterExplicitRun` on the terminal state.
-- **Click-outside during the `gh` wait.** Mitigated by suppressing the click handler while a prepare is in flight; Escape stays the deliberate cancel.
-- **Adapter absent on a default launch.** `adapters()` and `--adapter` are not on the default Mac path. Mitigated by registering the adapter in `build_registry` and skipping its catalog seed.
-- **Free-form goal.** Mitigated by two goal templates chosen in code, with only a slug or an issue URL interpolated.
-- **30 s acceptance window.** `max_offer_age_seconds` runs from mint, which is after `gh` returns, so the user has the full window. The `gh` calls carry their own timeout so a hung search cannot silently burn it.
+- **Click-outside during search.** Suppress the click handler while prepare is in flight; Escape cancels and bumps generation.
+- **Adapter absent on a default launch.** Register in `build_registry` and skip the catalog seed.
+- **Free-form goal.** Two templates; only slug or issue URL interpolated.
+- **30 s acceptance window.** Clock starts after search returns. HTTP calls have their own timeout.
 
 ## Pre-Mortem
 
