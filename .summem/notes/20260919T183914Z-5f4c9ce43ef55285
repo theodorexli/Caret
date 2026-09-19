@@ -1,0 +1,1 @@
+INFOPLIST_KEY_CaretProjectRoot does not land in GENERATE_INFOPLIST_FILE output, so shipped Caret.app has no project root and ScreenpipeSupervisor.start is a no-op until that key is actually in Info.plist.

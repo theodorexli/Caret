@@ -1,0 +1,1 @@
+Caret.app always starts its own screenpipe@0.4.50 on :3031 and does not attach to a manual or launchd instance; a second recorder can stop the first.
