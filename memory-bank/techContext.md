@@ -1,6 +1,6 @@
 # Tech Context
 
-Native Mac UI in Swift, local workflow core in Python 3.11+ with stdlib only, run state in SQLite. The default run has no third-party Python dependencies, web frontend or container. Five selected upstreams are pinned but not integrated; see [docs/input-pipeline.md](../docs/input-pipeline.md).
+Native Mac UI in Swift, local workflow core in Python 3.11+ with stdlib only, run state in SQLite. The default run has no third-party Python dependencies, web frontend or container. Five selected upstreams are pinned; Caret.app launches published Screenpipe 0.4.50. See [docs/input-pipeline.md](../docs/input-pipeline.md).
 
 ## Environment Setup
 
@@ -13,15 +13,18 @@ Native Mac UI in Swift, local workflow core in Python 3.11+ with stdlib only, ru
 ## Build Tools
 
 - `Makefile` is the command surface: `demo`, `app`, `test`, `check`, `sources`.
-- Mac executable: `Caret.xcodeproj`, with a parallel SwiftPM package for build checks. `scripts/run_mac.py` now uses Xcode and opens `.local/build/Debug/Caret.app`. The current app does not invoke Python.
-- Python is invoked as `python3 -m caret`. CLI operations are listed by `python3 -m caret --help`.
+- Mac executable: `Caret.xcodeproj`, with a parallel SwiftPM package for build checks. `scripts/run_mac.py` now uses Xcode and opens `.local/build/Debug/Caret.app`. On start the app resolves the pinned `screenpipe` Mach-O and bootstraps launchd job `dev.caret.hackathon.screenpipe` on port 3031 if that port is free. If the port is taken, it does not spawn. It writes `.local/screenpipe-lease.json` only when `/health` matches the pin version (an existing match gets lease `pid` 0). `CaretProjectRoot` in `apps/mac/Sources/Caret/Info.plist` is merged into the bundle so the supervisor, skills, memories, and notes resolve this repository. The app still does not invoke the Python planner.
+- Python is invoked as `python3 -m caret`. History commands are `history-windows`, `history-minutes`, `history-clipboard`, and `history-debug` (newest-first last-2 glance). Other operations are listed by `python3 -m caret --help`.
 
 ## Testing Process
 
-- Python: `unittest` discovery under `tests/` (`make test`). Checks should cover scheduling arithmetic, failed-source handling, hold transitions, and duplicate external effects — see `CONTRIBUTING.md`.
+- Python: `unittest` discovery under `tests/` (`make test`). Checks should cover scheduling arithmetic, failed-source handling, hold transitions, and duplicate external effects — see `CONTRIBUTING.md`. `tests/test_xcodeproj.py` requires unique `Caret.xcodeproj` object IDs and that every Sources `files` entry is a `PBXBuildFile`; a FileRef in that list makes xcodebuild refuse the project.
 - Pin lockstep: `scripts/check_sources.py` requires `sources.json`, `.gitmodules`, and staged submodule SHAs to match.
 - Full Mac gate: `make check` (tests + pin check + `swift build`). CI splits this: Linux runs tests, the pin check, and a fixture preview; macOS builds the Swift package (`.github/workflows/ci.yml`).
-- No check uses live accounts or sends messages. A green run does not prove Gmail, calendar, or browser acceptance.
+- Mac CI SDK: the Mac job runs on `macos-26` because Tahoe APIs such as `glassEffect` need the Xcode 26 SDK. `macos-15` defaults to Xcode 16.4 and will not compile those symbols. `#available(macOS 26.0, *)` is a **runtime** check — the compiler still type-checks both branches against the current SDK. New Apple APIs need a compile-time gate (`#if compiler(>=6.2)` or equivalent) **and** an SDK that has the symbol. Do not move the Mac job back to default Xcode 16.
+- GitHub Actions repository secret `SUPABASE_HACKATHON_TOKEN` is available for CI jobs that need Supabase (`gh secret list`). Workflows that need it should use `${{ secrets.SUPABASE_HACKATHON_TOKEN }}`. Do not write the value into the repo, plaintext workflow files, or memory-bank.
+- Chat completions use Vercel AI Gateway (`caret/completions.py`, default model `google/gemini-2.5-flash`). Set `VERCEL_API_GATEWAY_KEY` locally or `${{ secrets.VERCEL_API_GATEWAY_KEY }}` in CI. Optional alias: `AI_GATEWAY_API_KEY`. CLI smoke: `python3 -m caret complete --prompt "Hello"`.
+- No current check uses live Gmail, calendar, or browser accounts, or sends messages. A green run does not prove those integrations.
 
 ## Design System
 

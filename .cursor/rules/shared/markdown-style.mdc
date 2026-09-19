@@ -1,0 +1,119 @@
+---
+description: Required baseline of stylistic and syntactic conventions for authoring Markdown content, wherever it shows up.
+globs: **/*.md,**/*.mdc
+alwaysApply: false
+---
+# Markdown Styling Conventions
+
+This document describes how I like Markdown documents - including `.mdc` cursor rules - to be styled.
+
+## Section Headings
+
+Prefer Markdown headings for logical sections - don't just bold some text! A section is anything that introduces a logically different topic, or contains multiple instances of the same thing (a list, or a set of examples).
+
+Do not **over-use** sections by adding "leaf" headings where a *list* or a simple *series of paragraphs* would do. Sections map to organization; leaf-level content that already lives inside a section probably doesn't need one.
+
+**No clarifying parentheticals in headings.** A heading names its section. It is not a sentence and does not get a subordinate clause to soften, qualify, or explain it. If a heading seems to need a parenthetical, rewrite the heading to absorb it.
+
+- **Wrong:** `## Configuration (Optional)`
+- **Right:** `## Optional Configuration`
+
+**Keep headings short and portable.** Headings get pulled out of their context constantly: into navigation sidebars, breadcrumbs, tables of contents, and the anchor text of links that point at the section. A heading that only makes sense sitting directly above its body is useless in every one of those places. Write headings that stand on their own.
+
+- **Wrong:** `## A Few Things to Keep in Mind Before You Start`
+- **Right:** `## Prerequisites`
+
+### Examples
+
+**Wrong** (underuses sections):
+
+~~~markdown
+## Quick Start
+
+Prerequisites:
+- git
+- POSIX-compatible shell (bash, dash, zsh, etc.)
+- Core Unix utilities (find, grep, cat, mktemp, etc.)
+
+Installation:
+```bash
+git clone https://github.com/yourusername/ai-rizz.git
+cd ai-rizz
+make install
+```
+
+Personal rules only (git-ignored):
+```bash
+ai-rizz init https://github.com/example/rules.git --local
+ai-rizz add rule my-personal-rule.mdc
+```
+~~~
+
+**Correct** (fully leverages sections):
+
+~~~markdown
+## Quick Start
+
+### Prerequisites
+- git
+- POSIX-compatible shell (bash, dash, zsh, etc.)
+- Core Unix utilities (find, grep, cat, mktemp, etc.)
+
+### Installation
+```bash
+git clone https://github.com/yourusername/ai-rizz.git
+cd ai-rizz
+make install
+```
+
+### Common Recipes
+
+**Personal rules only (git-ignored):**
+```bash
+ai-rizz init https://github.com/example/rules.git --local
+ai-rizz add rule my-personal-rule.mdc
+```
+~~~
+
+## No Hard Wrapping
+
+Never hard-wrap prose. Write each paragraph as one continuous line and let the reader's tooling wrap it to the window.
+
+Hard wrapping - inserting newlines mid-paragraph to cap its visual width - buys nothing and costs maintenance:
+
+- Markdown read by a machine (static-site generators, doc pipelines, anything that parses to HTML) collapses a single newline into a space. The wrap is invisible in the output.
+- Markdown read by a human is shown in something that soft-wraps to the viewport: a browser, an editor pane, a rendered preview. The wrap is redundant.
+- Either way the wrap reliably does one thing: it goes stale the instant you edit the paragraph, so every wording change drags a cluster of reflow noise into the diff.
+
+The only place a newline inside a block is load-bearing is code, where whitespace can carry meaning - and code lives in code blocks, which preserve it regardless of this rule. So for prose there is no real exception: don't hard-wrap.
+
+Line breaks that are part of a structure's syntax (table rows, list items, fenced code) are content, not wrapping. Leave them alone.
+
+## Nesting Markdown Inside Markdown
+
+Sometimes a Markdown document contains an example written in Markdown - documentation about documentation, a rule about rules, this very file. That puts a fence inside a fence, and the naive fix (count the backticks, add one more to the outer fence) is fiddly and easy to get wrong.
+
+Use a tilde fence instead. Open and close the outer block with `~~~`, and inside it write ordinary triple-backtick fences exactly the way any author would - no escaping, no counting. A tilde fence only closes on tildes, so the backticks inside are left completely alone.
+
+~~~markdown
+## Install
+
+```bash
+make install
+```
+~~~
+
+The block above is the entire technique: a `~~~`-fenced outer block whose body contains a normal ```` ```bash ```` fence, untouched.
+
+You only count again if you need to show a tilde fence *itself* - a fence, inside a fence, inside a fence. That is rare. When it happens, bump the outer fence to four tildes (`~~~~`). Reach for this only when you actually hit it.
+
+### Fallback: Indented Code Blocks
+
+If the nesting gets so deep that even tilde fences are confusing, indent the block with a tab (or four spaces). Indented blocks use no fence characters at all, so they can never conflict:
+
+	## No conflicts here
+	```bash
+	echo "works"
+	```
+
+The tradeoff is no language tag and no syntax highlighting. Use it only as a last resort - the tilde fence handles essentially everything.

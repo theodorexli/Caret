@@ -1,0 +1,1 @@
+Mac CI (macos-15) defaults to Xcode 16.4; #available is runtime-only and still type-checks. Keep the Xcode 26 select in ci.yml and #if compiler-gate new SDK APIs.

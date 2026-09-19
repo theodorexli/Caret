@@ -4,6 +4,7 @@ import ApplicationServices
 final class HotKeyManager {
     var onHotKey: ((CGPoint) -> Void)?
     var onPinnedHotKey: ((Int) -> Void)?
+    var onCommandOptionHeld: ((Bool) -> Void)?
 
     private var globalMonitor: Any?
     private var localMonitor: Any?
@@ -60,12 +61,29 @@ final class HotKeyManager {
             self?.handle(event)
         }
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { [weak self] event in
+            if Self.shouldDeliverToTextInput(event) {
+                return event
+            }
             self?.handle(event)
             return event
         }
     }
 
+    private static func shouldDeliverToTextInput(_ event: NSEvent) -> Bool {
+        guard event.type == .keyDown else { return false }
+        guard let responder = NSApp.keyWindow?.firstResponder else { return false }
+        if responder is NSTextView || responder is NSTextField {
+            return true
+        }
+        if let view = responder as? NSView, view.className.contains("FieldEditor") {
+            return true
+        }
+        return false
+    }
+
     private func handle(_ event: NSEvent) {
+        reportCommandOptionHeld(from: event)
+
         if event.type == .keyDown {
             if handlePinnedShortcut(event) {
                 return
@@ -101,6 +119,11 @@ final class HotKeyManager {
         sawOtherKey = true
         onPinnedHotKey?(slot)
         return true
+    }
+
+    private func reportCommandOptionHeld(from event: NSEvent) {
+        let flags = event.modifierFlags.intersection([.command, .option, .shift, .control])
+        onCommandOptionHeld?(flags == [.command, .option])
     }
 
     private func slot(forKeyCode keyCode: UInt16) -> Int? {

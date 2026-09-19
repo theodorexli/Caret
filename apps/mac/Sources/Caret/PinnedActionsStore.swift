@@ -49,8 +49,16 @@ struct PinnedActionsStore: Equatable {
     }
 
     static func load(from defaults: UserDefaults = .standard) -> PinnedActionsStore {
-        let ids = defaults.stringArray(forKey: storageKey) ?? []
-        return PinnedActionsStore(orderedActionIDs: ids)
+        let raw = defaults.stringArray(forKey: storageKey) ?? []
+        let ids = raw.compactMap { id -> String? in
+            if TabCompletions.isTabCompletionsAction(id) { return nil }
+            return id
+        }
+        let store = PinnedActionsStore(orderedActionIDs: ids)
+        if ids != raw {
+            store.save(to: defaults)
+        }
+        return store
     }
 
     func save(to defaults: UserDefaults = .standard) {

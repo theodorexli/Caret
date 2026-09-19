@@ -1,0 +1,1 @@
+Caret.xcodeproj object IDs must be unique; a FileRef in a Sources files list makes xcodebuild unable to open the project

@@ -4,7 +4,7 @@ import SwiftUI
 enum CaretPillMetrics {
     static let sparkleSize = NSSize(width: 40, height: 40)
     static let clusterHeight: CGFloat = 40
-    static let pinLabelMaxWidth: CGFloat = 58
+    static let pinIconCellWidth: CGFloat = 36
     static let clusterSpacing: CGFloat = 4
     static let stripCornerRadius: CGFloat = clusterHeight / 2
 }
@@ -12,6 +12,7 @@ enum CaretPillMetrics {
 struct PinnedActionChip: Identifiable, Equatable {
     let id: String
     let title: String
+    let icon: String
     let slot: Int
 }
 
@@ -24,8 +25,10 @@ final class TriggerButtonController {
     private let panel = TriggerButtonPanel()
     private var lastRect: CGRect = .zero
     private var pinnedActions: [PinnedActionChip] = []
+    private weak var chordState: ModifierChordState?
 
-    init() {
+    init(chordState: ModifierChordState) {
+        self.chordState = chordState
         panel.contentView = makeHostingView()
         panel.setContentSize(CaretPillMetrics.sparkleSize)
     }
@@ -49,6 +52,7 @@ final class TriggerButtonController {
         let hosting = NSHostingView(
             rootView: TriggerClusterView(
                 pinnedActions: pinnedActions,
+                chordState: chordState!,
                 onPinnedTap: { [weak self] chip in
                     self?.onPinnedAction?(chip)
                 },
@@ -121,6 +125,7 @@ final class TriggerButtonPanel: NSPanel {
 
 struct TriggerClusterView: View {
     let pinnedActions: [PinnedActionChip]
+    @ObservedObject var chordState: ModifierChordState
     let onPinnedTap: (PinnedActionChip) -> Void
     let onSparkleTap: () -> Void
 
@@ -128,7 +133,7 @@ struct TriggerClusterView: View {
         HStack(alignment: .center, spacing: CaretPillMetrics.clusterSpacing) {
             TriggerButtonView(onClick: onSparkleTap)
             if !pinnedActions.isEmpty {
-                PinnedGlassStrip(actions: pinnedActions, onTap: onPinnedTap)
+                PinnedGlassStrip(actions: pinnedActions, chordState: chordState, onTap: onPinnedTap)
             }
         }
         .frame(height: CaretPillMetrics.clusterHeight)
@@ -137,6 +142,7 @@ struct TriggerClusterView: View {
 
 private struct PinnedGlassStrip: View {
     let actions: [PinnedActionChip]
+    @ObservedObject var chordState: ModifierChordState
     let onTap: (PinnedActionChip) -> Void
 
     var body: some View {
@@ -149,6 +155,7 @@ private struct PinnedGlassStrip: View {
                 }
                 PinnedStripCell(
                     chip: chip,
+                    showShortcut: chordState.commandOptionHeld,
                     isFirst: index == 0,
                     isLast: index == actions.count - 1
                 ) {
@@ -163,6 +170,7 @@ private struct PinnedGlassStrip: View {
 
 private struct PinnedStripCell: View {
     let chip: PinnedActionChip
+    let showShortcut: Bool
     let isFirst: Bool
     let isLast: Bool
     let action: () -> Void
@@ -180,14 +188,21 @@ private struct PinnedStripCell: View {
 
     var body: some View {
         Button(action: action) {
-            Text(chip.title)
-                .font(.system(size: 10, weight: .medium))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: CaretPillMetrics.pinLabelMaxWidth)
-                .padding(.horizontal, 8)
-                .frame(maxHeight: .infinity)
+            Group {
+                if showShortcut {
+                    Text(PinnedShortcutFormatting.menuLabel(slot: chip.slot))
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                } else {
+                    Image(systemName: chip.icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .symbolRenderingMode(.hierarchical)
+                }
+            }
+            .foregroundStyle(.primary)
+            // Keyboard hints must appear immediately when the modifier chord changes.
+            .frame(width: showShortcut ? 44 : CaretPillMetrics.pinIconCellWidth)
+            .padding(.horizontal, showShortcut ? 6 : 4)
+            .frame(maxHeight: .infinity)
                 .background {
                     if isHovered {
                         hoverShape.fill(Color.primary.opacity(0.1))
@@ -196,6 +211,8 @@ private struct PinnedStripCell: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+        .accessibilityLabel(chip.title)
+        .accessibilityHint("Opens actions for \(chip.title)")
         .help("\(chip.title) (\(PinnedShortcutFormatting.menuLabel(slot: chip.slot)))")
     }
 }
@@ -203,15 +220,25 @@ private struct PinnedStripCell: View {
 private extension View {
     @ViewBuilder
     func caretGlassCapsule() -> some View {
+        // `#available` is runtime-only. Xcode 16 still type-checks glassEffect
+        // and fails. The modifier exists on Swift 6.2+ / Xcode 26 SDKs.
+#if compiler(>=6.2)
         if #available(macOS 26.0, *) {
             glassEffect(.regular.interactive(), in: .capsule)
         } else {
-            background(Capsule(style: .continuous).fill(.ultraThinMaterial))
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
-                }
+            caretMaterialCapsule()
         }
+#else
+        caretMaterialCapsule()
+#endif
+    }
+
+    func caretMaterialCapsule() -> some View {
+        background(Capsule(style: .continuous).fill(.ultraThinMaterial))
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
+            }
     }
 }
 
@@ -232,7 +259,8 @@ struct TriggerButtonView: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .help("Caret")
+        .accessibilityLabel("Open Caret actions")
+        .help("Open Caret actions")
         .frame(width: 40, height: 40)
     }
 }

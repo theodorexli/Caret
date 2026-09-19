@@ -1,0 +1,33 @@
+{
+  "kind": "clipboard",
+  "n": 3,
+  "records": [
+    {
+      "timestamp": "2026-09-19T13:45:55-05:00",
+      "app": "Mail",
+      "title": "New Message",
+      "text_source": "clipboard",
+      "structure_source": null,
+      "structure": null,
+      "text": "luis.shah@example.com"
+    },
+    {
+      "timestamp": "2026-09-19T13:44:33-05:00",
+      "app": "Mail",
+      "title": "Marcus Shah — Re: Cancun / Tío Luis",
+      "text_source": "clipboard",
+      "structure_source": null,
+      "structure": null,
+      "text": "Oct 12–19, 2026 · Cancún"
+    },
+    {
+      "timestamp": "2026-09-19T13:43:28-05:00",
+      "app": "Calendar",
+      "title": "October 2026",
+      "text_source": "clipboard",
+      "structure_source": null,
+      "structure": null,
+      "text": "Wed Oct 14 lunch or Thu Oct 15 morning · SJO → CUN"
+    }
+  ]
+}

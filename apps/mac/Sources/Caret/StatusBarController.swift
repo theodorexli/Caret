@@ -3,6 +3,8 @@ import ApplicationServices
 
 final class StatusBarController: NSObject, NSMenuDelegate {
     var onOpen: (() -> Void)?
+    var onSettings: (() -> Void)?
+    var onDebug: (() -> Void)?
     var onFixAccessibility: (() -> Void)?
 
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -24,6 +26,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         openItem.target = self
         menu.addItem(openItem)
 
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
         menu.addItem(.separator())
 
         let axItem = NSMenuItem(title: "Accessibility…", action: #selector(openAccessibility), keyEquivalent: "")
@@ -34,6 +40,12 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         let repairItem = NSMenuItem(title: "Reconnect Accessibility…", action: #selector(fixAccessibility), keyEquivalent: "")
         repairItem.target = self
         menu.addItem(repairItem)
+
+        menu.addItem(.separator())
+
+        let debugItem = NSMenuItem(title: "Debug…", action: #selector(openDebug), keyEquivalent: "")
+        debugItem.target = self
+        menu.addItem(debugItem)
 
         menu.addItem(.separator())
 
@@ -64,12 +76,20 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         onOpen?()
     }
 
+    @objc private func openSettings() {
+        onSettings?()
+    }
+
     @objc private func openAccessibility() {
         AXHelpers.openAccessibilitySettings()
     }
 
     @objc private func fixAccessibility() {
         onFixAccessibility?()
+    }
+
+    @objc private func openDebug() {
+        onDebug?()
     }
 
     @objc private func quit() {

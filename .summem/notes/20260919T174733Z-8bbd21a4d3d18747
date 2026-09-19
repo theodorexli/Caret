@@ -1,0 +1,1 @@
+Caret inference that needs Screenpipe history hard-fails if the sidecar is down or last-N is empty; do not continue on a miss

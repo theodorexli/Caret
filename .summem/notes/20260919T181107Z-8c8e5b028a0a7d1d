@@ -1,0 +1,1 @@
+Screenpipe 0.4.50 stores no clipboard history by default; enable with --disable-clipboard-capture false. Caret pin launch does not pass that flag.

@@ -22,7 +22,12 @@ jobs:
       - run: python3 -m caret preview --fixture fixtures/meeting.json
   mac:
     name: Mac build
-    runs-on: macos-15
+    # SwiftUI's glassEffect requires Xcode 26; Package.swift still targets macOS 14.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Report toolchain
+        run: |
+          xcodebuild -version
+          swift --version
       - run: swift build --package-path apps/mac

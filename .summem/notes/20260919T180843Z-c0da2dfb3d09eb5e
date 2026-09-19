@@ -1,0 +1,1 @@
+Mac CI on main is macos-26 for glassEffect/Xcode 26. Do not move that job back to macos-15 default Xcode 16.4.

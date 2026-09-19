@@ -1,0 +1,1 @@
+2026-09-19: Niko QA/Preflight in this repo today must use only cursor-grok-4.6-xhigh-fast or Gemini 3.8 Flash (Gemini not on the subagent allow-list).

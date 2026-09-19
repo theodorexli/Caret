@@ -33,5 +33,12 @@
     "commit": "892199f742e46d0c5d9e8c06687b35ca7c2b6547",
     "license": "MIT except ee/",
     "role": "Sole history/context engine; owned by context teammate; retain historical license pin"
+  },
+  {
+    "path": "sites/landing",
+    "url": "https://github.com/SamGu-NRX/caret-landing.git",
+    "commit": "f95355771007ae533949cdd698f988d317b37591",
+    "license": "No license declared",
+    "role": "First-party static Caret landing site with interactive sample workflows"
   }
 ]
