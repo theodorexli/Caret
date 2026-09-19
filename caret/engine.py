@@ -31,6 +31,7 @@ from .router import (
     ACTION_KIND,
     INLINE_KIND,
     Admission,
+    Offer,
     Publication,
     Router,
     RouterConfig,
@@ -204,3 +205,10 @@ class Engine:
 
     def dismiss(self, proposal_id: str) -> bool:
         return self.router.dismiss(proposal_id)
+
+    def prepare_named(self, workflow_id: str, frame: ContextFrame) -> Offer:
+        """Install an explicit-invoke offer. Does not submit or evaluate."""
+        adapter = self.registry.get(workflow_id)
+        preparation = adapter.prepare(frame)
+        offer = build_action_offer(frame, adapter.descriptor, preparation, self.clock())
+        return self.router.install_offer(frame, offer)

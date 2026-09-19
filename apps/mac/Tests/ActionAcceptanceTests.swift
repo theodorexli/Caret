@@ -76,6 +76,66 @@ final class ActionAcceptanceTests: XCTestCase {
 
     // MARK: - Blocker 5: invalidated offers leave no dead row
 
+    func testHostMismatchIsNilWhenPidAndBundleMatchALiveHost() {
+        let offer = target(pid: 501)
+        let host = CoreBridgeProvider.HostSnapshot(pid: 501, bundleID: "com.apple.TextEdit", terminated: false)
+        XCTAssertNil(CoreBridgeProvider.hostMismatch(offerTarget: offer, host: host))
+    }
+
+    func testHostMismatchWhenThePidIsGoneOrTerminatedOrTheBundleDiffers() {
+        let offer = target(pid: 501)
+        XCTAssertNotNil(CoreBridgeProvider.hostMismatch(offerTarget: offer, host: nil))
+        XCTAssertNotNil(CoreBridgeProvider.hostMismatch(
+            offerTarget: offer,
+            host: CoreBridgeProvider.HostSnapshot(pid: 501, bundleID: "com.apple.TextEdit", terminated: true)
+        ))
+        XCTAssertNotNil(CoreBridgeProvider.hostMismatch(
+            offerTarget: offer,
+            host: CoreBridgeProvider.HostSnapshot(pid: 999, bundleID: "com.apple.TextEdit", terminated: false)
+        ))
+        XCTAssertNotNil(CoreBridgeProvider.hostMismatch(
+            offerTarget: offer,
+            host: CoreBridgeProvider.HostSnapshot(pid: 501, bundleID: "com.apple.Safari", terminated: false)
+        ))
+    }
+
+    @MainActor
+    func testVisibleChoicesAreOfferedOnly() {
+        let provider = CoreBridgeProvider(capture: FocusedTargetCapture())
+        let running = CaretActionOffer(
+            proposalID: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            revision: 1,
+            target: target(pid: 501, element: ""),
+            workflowID: "book-calendar-link",
+            title: "Running",
+            effect: "",
+            evidence: [],
+            missingInputs: [],
+            executionMethod: "computer-use-jev",
+            sampleOnly: false,
+            state: .running
+        )
+        let offered = CaretActionOffer(
+            proposalID: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            revision: 2,
+            target: target(pid: 501, element: ""),
+            workflowID: "report-github-issue",
+            title: "Report",
+            effect: "",
+            evidence: [],
+            missingInputs: [],
+            executionMethod: "computer-use-jev",
+            sampleOnly: false,
+            state: .offered
+        )
+        provider.testingReplaceOffers([running, offered])
+        XCTAssertEqual(provider.visibleExecutableActions.map(\.proposalID), [offered.proposalID])
+
+        let model = Model()
+        model.setActionOffers([running, offered])
+        XCTAssertEqual(model.runnableOffers.map(\.proposalID), [offered.proposalID])
+    }
+
     @MainActor
     func testContextInvalidationClearsOffersAndNotifies() {
         let provider = CoreBridgeProvider(capture: FocusedTargetCapture())
@@ -86,6 +146,72 @@ final class ActionAcceptanceTests: XCTestCase {
         provider.invalidateContextualOffers()
         XCTAssertEqual(changes, 0)
         XCTAssertTrue(provider.visibleExecutableActions.isEmpty)
+    }
+
+    @MainActor
+    func testDiscardPreparedOfferRemovesAnOfferedRowAndNotifies() {
+        let provider = CoreBridgeProvider(capture: FocusedTargetCapture())
+        let offered = CaretActionOffer(
+            proposalID: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            revision: 2,
+            target: target(pid: 501, element: ""),
+            workflowID: "report-github-issue",
+            title: "Report",
+            effect: "",
+            evidence: [],
+            missingInputs: [],
+            executionMethod: "computer-use-jev",
+            sampleOnly: false,
+            state: .offered
+        )
+        provider.testingReplaceOffers([offered])
+        var changes = 0
+        provider.onActionsChanged = { changes += 1 }
+
+        provider.discardPreparedOffer(offered.proposalID)
+
+        XCTAssertEqual(changes, 1)
+        XCTAssertTrue(provider.visibleExecutableActions.isEmpty)
+        XCTAssertNil(provider.actionOffer(id: offered.proposalID))
+    }
+
+    @MainActor
+    func testDiscardPreparedOfferLeavesARunningRow() {
+        let provider = CoreBridgeProvider(capture: FocusedTargetCapture())
+        let running = CaretActionOffer(
+            proposalID: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            revision: 1,
+            target: target(pid: 501, element: ""),
+            workflowID: "book-calendar-link",
+            title: "Running",
+            effect: "",
+            evidence: [],
+            missingInputs: [],
+            executionMethod: "computer-use-jev",
+            sampleOnly: false,
+            state: .running
+        )
+        provider.testingReplaceOffers([running])
+        var changes = 0
+        provider.onActionsChanged = { changes += 1 }
+
+        provider.discardPreparedOffer(running.proposalID)
+
+        XCTAssertEqual(changes, 0)
+        XCTAssertEqual(provider.actionOffer(id: running.proposalID)?.state, .running)
+    }
+
+    @MainActor
+    func testClearPanelScopeClearsExplicitStatusAndPreparePanelDoesNot() {
+        let model = Model()
+        model.beginExplicitInvoke(actionID: "report-github-issue")
+        XCTAssertEqual(model.explicitStatus, "Searching GitHub…")
+
+        model.preparePanel(scopedActionID: nil)
+        XCTAssertEqual(model.explicitStatus, "Searching GitHub…")
+
+        model.clearPanelScope()
+        XCTAssertEqual(model.explicitStatus, "")
     }
 }
 

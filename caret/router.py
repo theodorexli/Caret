@@ -28,7 +28,7 @@ from datetime import datetime, timedelta
 from typing import Callable
 
 from .context import ContextFrame, TargetIdentity, digest, utf16_length
-from .registry import Preparation, WorkflowDescriptor
+from .registry import Preparation, WorkflowDescriptor, WorkflowError
 
 INLINE_KIND = "inline"
 ACTION_KIND = "action"
@@ -351,9 +351,17 @@ class Router:
         this failed evaluation began, which is the last time the router started
         one. Suppression is deliberately untouched: the context is still worth
         asking about, just not immediately.
+
+        A stale failure — one whose frame is no longer current — is discarded
+        and does not start backoff, so an explicit install is not poisoned by
+        the ambient evaluation it replaced.
         """
         with self._lock:
             self._in_flight = None
+            if self.is_stale(frame):
+                return self._publish_locked(
+                    Publication("discarded", "stale-snapshot", None, frame.revision)
+                )
             self._failed_at = self._last_started
             return self._publish_locked(Publication("failed", reason, None, frame.revision))
 
@@ -366,6 +374,20 @@ class Router:
                 )
             self._offer = offer
             return self._publish_locked(Publication("published", "", offer, frame.revision))
+
+    def install_offer(self, frame: ContextFrame, offer: Offer) -> Offer:
+        """Publish an explicit-invoke offer without taking the in-flight slot."""
+        with self._lock:
+            if frame.revision <= self._highest_revision:
+                raise WorkflowError(
+                    f"Explicit invoke revision {frame.revision} is not newer than {self._highest_revision}"
+                )
+            self._highest_revision = frame.revision
+            self._current_target = frame.snapshot.target
+            self._pending = None
+            self._invalidate_locked("replaced-by-explicit-invoke")
+            self._offer = offer
+            return offer
 
     # -- Offer lifecycle -------------------------------------------------
 

@@ -14,11 +14,12 @@ deliberate "no workflow" stay distinguishable.
 
 from __future__ import annotations
 
-from . import flight, meeting
+from . import flight, meeting, report_issue
 
 ACTION_WORKFLOWS: dict[str, str | None] = {
     "book-flight": flight.WORKFLOW_ID,
     "book-calendar-link": meeting.WORKFLOW_ID,
+    "report-github-issue": report_issue.WORKFLOW_ID,
     "revise": None,
     "summarize": None,
     "translate": None,
@@ -30,6 +31,7 @@ ACTION_WORKFLOWS: dict[str, str | None] = {
 ADAPTER_CLASS_PATHS: dict[str, str] = {
     meeting.WORKFLOW_ID: "caret.live_workflows:MeetingDraftWorkflow",
     flight.WORKFLOW_ID: "caret.live_workflows:SkyvernFlightWorkflow",
+    report_issue.WORKFLOW_ID: "caret.live_workflows:ReportGithubIssueWorkflow",
 }
 """The ``--adapter`` arguments the bridge is to be given, as the core owner
 stated them. The package re-exports both classes, so the submodule paths
@@ -47,7 +49,7 @@ def workflow_for_action(action_id: str) -> str | None:
 
 def adapters() -> tuple:
     """One instance of each adapter this package registers."""
-    return (meeting.MeetingDraftWorkflow(), flight.SkyvernFlightWorkflow())
+    return (meeting.MeetingDraftWorkflow(), flight.SkyvernFlightWorkflow(), report_issue.ReportGithubIssueWorkflow())
 
 
 __all__ = ["ACTION_WORKFLOWS", "ADAPTER_CLASS_PATHS", "adapters", "workflow_for_action"]

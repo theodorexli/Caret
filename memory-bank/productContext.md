@@ -10,12 +10,13 @@ Teddy owns the app and UX, the context teammate owns Screenpipe, and Sam owns th
 
 ## Use Cases
 
-These are the three seeded workflows. Only the calendar-link preview currently runs, and only against labeled sample data.
+These are the catalog workflows. The calendar-link preview still runs only against labeled sample data. Reporting a GitHub issue is an explicit panel action.
 
 - **Propose meeting times.** From a thread that asks for times, show up to three supported slots plus the evidence used, then (once live sending is connected) put a draft in front of the user before anything leaves the machine.
 - **Hold and confirm.** After an approved send, place tentative calendar holds for the offered times. A later reply that picks one time keeps that hold and drops the others from this run.
 - **Book a flight.** Navigate a booking site from the chosen option and stop before payment. This seed exists; it does not execute yet.
 - **Revise selected text.** Change text in place in the original app after rechecking that the selection is still the same. This seed exists; it does not execute yet.
+- **Report a GitHub issue.** Pause the current app, search that app's public GitHub issues, and offer to comment or open a new report. The write happens in the user's already-signed-in browser. An app with no public GitHub issue target fails with an explicit sentence.
 
 The CLI supports a **synthetic** Dallas meeting, calculated options and local hold transitions. At app commit `827a387`, Teddy's UI shows a cursor-adjacent trigger, pinned actions and a scrollable action list; its callback logs and closes the panel. It is not connected to the CLI. Live thread retrieval, sending, calendar writes and computer execution remain unconnected.
 
@@ -46,4 +47,4 @@ The starter today only proves local preview math and local hold transitions on s
 - Fixture content is synthetic and cannot be sent. A draft is created only from supported, sourced options.
 - The app currently observes focused fields and selections through Accessibility to position its trigger. Caret.app starts pinned Screenpipe 0.4.50 on port 3031 via a launchd job; last-N windows, minutes, and clipboard are available through `python3 -m caret`. The Caret menu Debug item shows a short last-2 preview of those slices.
 - Live credentials and personal threads stay out of Git. Source integrations need explicit configuration.
-- External sending, calendar writes, Jev routing, and browser execution are **not connected**. Connecting them is future work, not an implied current capability.
+- External sending, calendar writes, ambient Jev routing, and Skyvern are **not connected**. Computer Use Jev is connected only for an accepted GitHub-report offer. Connecting the rest is future work, not an implied current capability.

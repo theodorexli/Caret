@@ -2,7 +2,7 @@
 
 ## How This System Works
 
-The architecture contract is [docs/input-pipeline.md](../docs/input-pipeline.md). One Jev judge uses current app, clipboard, history and computer observations to choose an inline offer or an action, then selects a workflow or supported computer task. The ambient judge and workflow bridge are still integration work.
+The architecture contract is [docs/input-pipeline.md](../docs/input-pipeline.md). One Jev judge uses current app, clipboard, history and computer observations to choose an inline offer or an action, then selects a workflow or supported computer task. Ambient two-second routing is still integration work. Explicit panel actions are a second lane: the Mac app freezes the host, calls `workflow.prepare` on the long-lived bridge, and accepts through the existing `offer.accept` path. That lane must not `submit` the ambient queue. `syncActionOffers` is the only writer of `model.actionOffers` and the only place Cmd-1 is armed — setting the model from a reply looks correct and leaves the chord dead.
 
 At app commit `827a387`, the native UI observes focused fields/selections and shows action rows. Selection logs and closes the panel. The Python CLI independently plans from labeled fixtures and writes local holds to SQLite under `.local/`. The new UI does not yet invoke that CLI. There is no server or container in the default run.
 
@@ -28,9 +28,9 @@ A candidate without `status == "ok"` and a source is dropped. Overlaps after tra
 
 SQLite stores a run's preview JSON and per-option rows (`tentative` / `confirmed` / `released`). Confirming one option releases the others **for that run only**. Retries must not send mail or delete another run's rows. Returned Google Calendar event IDs are a future field; they do not exist in the starter schema. Do not report that external holds exist after a local `hold` or `confirm`.
 
-## Three workflow seeds, one local path
+## Catalog rows, two execution paths
 
-`caret/workflows.json` lists `book-flight`, `book-calendar-link`, and `revise`. Only the sample calendar-link planner executes. Sam owns the two demo workflow definitions; the seeds do not authorize agents to expand scope. Skyvern is the chosen browser executor and Computer Use Jev is the chosen native pipeline. KeyType and GhostType components are combined into one input/acceptance path.
+`caret/workflows.json` lists `book-flight`, `book-calendar-link`, `revise`, and `report-github-issue`. The sample calendar-link planner still executes locally against fixtures. `report-github-issue` is a built-in explicit-invoke adapter: public unauthenticated GitHub HTTP in `prepare`, computer-use-jev after accept. `book-flight` and `revise` stay unavailable. Sam owns the two demo workflow definitions; the catalog does not authorize agents to expand scope. Skyvern is the chosen browser executor and Computer Use Jev is the chosen native pipeline. KeyType and GhostType components are combined into one input/acceptance path.
 
 ## Timestamps are offset-aware
 

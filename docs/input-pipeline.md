@@ -40,6 +40,34 @@ Run the second query only when ACTION wins. It chooses a seeded workflow ID or a
 
 The second query may prepare a read-only proposal before a keystroke so the hoverable is ready. Preparation does not send, write a calendar, type into another app or navigate the user's browser. Acceptance starts the requested workflow. Each consequential step still names its actual effect in the preview.
 
+## Explicit invoke (panel, not ambient)
+
+Some actions are picked from the panel and never go through the two-second
+judge. `report-github-issue` is the first: the user opens the panel, Caret
+freezes `HostContext` from the frontmost app before presenting, capture stays
+paused, and the row runs `workflow.prepare` on that frozen host plus the panel
+query as the complaint. The panel stays up until the user accepts the minted
+offer or cancels.
+
+This lane owns its own offer install (`Router.install_offer`). It must not
+`submit` the ambient queue, must not emit a `failed` event, and must not resume
+capture until the accepted run reaches a terminal state. Cmd-1 is armed only
+for `.offered` rows, and preparing this action drops every other non-running
+offer so the chord is deterministic. Accept orders the panel out
+(`standDownForExplicitRun`) without `hidePanel`, so capture does not restart
+and the floating panel does not sit over the browser computer-use-jev is
+driving. A terminal state is the only resume. Escape cancels the session:
+the generation counter advances, a late `prepareWorkflow` install is discarded
+from the provider store, and `clearPanelScope` clears the searching sentence.
+A finished run writes its summary after that clear so the next panel open can
+show it.
+
+The ambient lane still owns `context.update`, the two Jev decisions, and
+inline Tab. Explicit invoke must not call `SkillActionRunner` and must not
+treat a picker click as a gateway skill scope. Failures on this path are a
+status row next to the action list (`explicitStatus`), not the inline
+backend banner.
+
 ## Two-second cadence
 
 The initial routing interval is 2,000 ms, as requested. This is a starting product setting, not a measured latency or quality claim. At continuous activity it allows at most 1,800 first-stage calls per hour before skips; second-stage and writer calls are additional.
@@ -137,25 +165,29 @@ clients are written against Vercel's published documentation and covered by
 tests with a fake transport, and the CI job that would call the service runs on
 manual dispatch only.
 
-Two workflows are registered and available: the existing sample planner, which
+Two ambient workflows are registered and available: the existing sample planner, which
 writes local SQLite holds on labeled synthetic data, and the opt-in
 `jev-scheduler` adapter. `book-flight` and `revise` register as unavailable with
-their reason, so the judge is never offered them.
+their reason, so the judge is never offered them. `report-github-issue` is a
+built-in that is available only on an explicit-invoke frame; see
+[Explicit invoke](#explicit-invoke-panel-not-ambient).
 
 **Not implemented here, and not started by this slice:**
 
-- **No Swift code calls the bridge.** Teddy owns the app side: building a
-  context frame from the live AX read, showing the returned offer, and the
-  scoped Tab and Command shortcuts. The core proposes a replacement range; the
-  app performs the insertion, owns undo and owns the clipboard.
-- **No capture wiring.** The core consumes supplied clipboard text, Screenpipe
-  results and computer-use observations. Nothing retrieves them yet, and the
-  core cannot: it never reads the screen, the pasteboard or the permission
-  database. `secure`, `ime_composing`, `app_excluded`, `accessibility` and
+- **Ambient Swift still does not drive the two-second loop by itself.** Teddy
+  owns live AX frames, the hoverable, and Tab / Command ownership. Explicit
+  invoke is the exception: the Mac app freezes the host, calls
+  `workflow.prepare`, installs the reply offer, and accepts through the
+  existing `offer.accept` path.
+- **No capture wiring for history.** The core consumes supplied clipboard text, Screenpipe
+  results and computer-use observations. Nothing retrieves Screenpipe on this
+  path. Explicit invoke does read the pasteboard into the frame it sends.
+  `secure`, `ime_composing`, `app_excluded`, `accessibility` and
   `workflow_active` are all caller-supplied, so suppression is only as good as
   what the app reports.
-- **No executor.** Skyvern and Computer Use Jev have no adapter. An unsupported
-  workflow is an unavailable choice, never a fabricated result.
+- **Skyvern is still unwired.** Computer Use Jev is the executor for an
+  accepted `report-github-issue` offer, using a templated goal. An unsupported
+  workflow remains an unavailable choice, never a fabricated result.
 - **No live provider run recorded.** The clients are written against the pinned
   upstream source and the published docs, and are covered by tests with a fake
   transport. No call has been made to any of the three services from this branch.
@@ -169,4 +201,4 @@ their reason, so the judge is never offered them.
 
 First prove the loop in one supported text app: correct offer, Tab inserts once, undo works, and a focus switch makes an old response unusable. Then connect one real workflow to Teddy's cards. Exercise continuous typing, IME input, secure fields, permission denial/revocation, duplicate keypresses and user interruption. Measure offer acceptance, unwanted interruptions, latency and calls per active minute before tuning the interval or confidence rules.
 
-The reviewed app commit `827a387` has a cursor-adjacent trigger, a pinned action strip, a scrollable menu, install packaging and Accessibility reconnection. Its current pinned shortcuts use Command–Option–1/2/3; the product keyboard contract above remains the integration target. Action selection logs and closes the panel; it does not execute the Python planner. The local CLI still supports sample preview/hold/confirm. The two routers now exist behind `python3 -m caret.bridge`, but no Swift code calls it yet. Inline insertion, live workflows, Screenpipe retrieval and both execution adapters remain integration work.
+The reviewed app commit `827a387` has a cursor-adjacent trigger, a pinned action strip, a scrollable menu, install packaging and Accessibility reconnection. Its current pinned shortcuts use Command–Option–1/2/3; the product keyboard contract above remains the integration target. Explicit invoke is the live exception: the panel calls `workflow.prepare` and accepts through `offer.accept`. Ambient inline insertion, Screenpipe retrieval and Skyvern remain integration work.

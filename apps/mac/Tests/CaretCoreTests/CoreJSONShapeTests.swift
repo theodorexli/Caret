@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import CaretCore
 
@@ -76,5 +77,58 @@ final class CoreJSONShapeTests: XCTestCase {
         transport.emit(line: #"{"id":\#(id),"ok":true,"result":{"dismissed":true}}"#)
         let dismissed = try await task.value
         XCTAssertTrue(dismissed)
+    }
+
+    func testExplicitActionFrameRevisionsAreMonotonicOnTheSharedCounter() {
+        let capture = FocusedTargetCapture()
+        let host = HostContext(pid: 4242, bundleID: "dev.ghostty.Ghostty", localizedName: "Ghostty")
+        let first = capture.explicitActionFrame(host: host, complaint: "It crashed")
+        let second = capture.explicitActionFrame(host: host, complaint: "It crashed again")
+        XCTAssertGreaterThan(second.snapshot.revision, first.snapshot.revision)
+        XCTAssertGreaterThan(first.snapshot.revision, 0)
+    }
+
+    func testExplicitActionFrameReadsThePasteboardWhenClipboardIsDisabled() {
+        let capture = FocusedTargetCapture(configuration: .init(clipboardEnabled: false))
+        let host = HostContext(pid: 4242, bundleID: "dev.ghostty.Ghostty", localizedName: "Ghostty")
+        let board = NSPasteboard.general
+        board.clearContents()
+        board.setString("pasted crash log", forType: .string)
+        let frame = capture.explicitActionFrame(host: host, complaint: "typed complaint")
+        XCTAssertEqual(frame.clipboard.available, true)
+        XCTAssertEqual(frame.clipboard.text, "pasted crash log")
+    }
+
+    func testExplicitActionFramePutsAComplaintInNearbyTextWithMatchingOffsets() throws {
+        let capture = FocusedTargetCapture()
+        let host = HostContext(pid: 4242, bundleID: "dev.ghostty.Ghostty", localizedName: "Ghostty")
+        let frame = capture.explicitActionFrame(host: host, complaint: "Window flashes black")
+        let length = UTF16Text.length("Window flashes black")
+        XCTAssertEqual(frame.snapshot.nearbyText, "Window flashes black")
+        XCTAssertEqual(frame.snapshot.textOffset, 0)
+        XCTAssertEqual(frame.snapshot.caret, length)
+        XCTAssertEqual(frame.snapshot.selection, TextSelection(start: length, end: length))
+        XCTAssertEqual(frame.snapshot.valueLength, length)
+
+        let data = try JSONEncoder().encode(frame)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let snapshot = try XCTUnwrap(object["snapshot"] as? [String: Any])
+        XCTAssertNotNil(snapshot["nearby_text"])
+        XCTAssertNotNil(snapshot["role"])
+        XCTAssertNotNil(snapshot["captured_at"])
+        XCTAssertNotNil(snapshot["value_length"])
+        XCTAssertNotNil(snapshot["revision"])
+        XCTAssertNotNil(snapshot["text_offset"])
+        XCTAssertNotNil(snapshot["caret"])
+        let target = try XCTUnwrap(snapshot["target"] as? [String: Any])
+        XCTAssertEqual(target["window_id"] as? String, "")
+        XCTAssertEqual(target["element_id"] as? String, "")
+
+        let names = (frame.sources.map(\.name), frame.sources.map(\.available), frame.sources.map(\.capturedAt))
+        XCTAssertTrue(names.0.contains("explicit_invoke"))
+        XCTAssertTrue(names.0.contains("frontmost_app"))
+        XCTAssertTrue(frame.sources.allSatisfy { $0.capturedAt == nil })
+        XCTAssertEqual(frame.sources.first { $0.name == "explicit_invoke" }?.detail, "dev.ghostty.Ghostty")
+        XCTAssertEqual(frame.sources.first { $0.name == "frontmost_app" }?.detail, "Ghostty")
     }
 }

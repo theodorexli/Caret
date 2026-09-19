@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import CaretCore
 import os
@@ -244,10 +245,52 @@ final class CoreBridgeProvider: InlineCompletionProviding {
     // MARK: - Actions
 
     var visibleExecutableActions: [CaretActionOffer] {
-        actionOffers.values.filter { $0.isExecutable }.sorted { $0.proposalID < $1.proposalID }
+        actionOffers.values.filter { $0.isExecutable && $0.state == .offered }.sorted { $0.proposalID < $1.proposalID }
+    }
+
+    func testingReplaceOffers(_ offers: [CaretActionOffer]) {
+        actionOffers = Dictionary(uniqueKeysWithValues: offers.map { ($0.proposalID, $0) })
+    }
+
+    struct HostSnapshot {
+        let pid: pid_t
+        let bundleID: String
+        let terminated: Bool
+    }
+
+    nonisolated static func hostMismatch(offerTarget: TargetIdentity, host: HostSnapshot?) -> String? {
+        guard let host, !host.terminated else {
+            return "The original app is no longer running, so nothing ran."
+        }
+        if host.pid != offerTarget.pid {
+            return "The original app is no longer running, so nothing ran."
+        }
+        if host.bundleID != offerTarget.bundleID {
+            return "The original app changed identity, so nothing ran."
+        }
+        return nil
+    }
+
+    func prepareWorkflow(id: String, frame: ContextFrame) async throws -> CaretActionOffer {
+        guard let client else { throw InlineProviderError.notRunning }
+        let minted = try await client.prepareWorkflow(workflowID: id, frame: frame)
+        let incoming = record(from: minted)
+        actionOffers = actionOffers.filter { $0.value.state == .running || $0.key == incoming.proposalID }
+        actionOffers[incoming.proposalID] = incoming
+        onActionsChanged?()
+        return incoming
     }
 
     func actionOffer(id: String) -> CaretActionOffer? { actionOffers[id] }
+
+    /// Drops a prepare that the user cancelled. A run already in flight is left
+    /// alone so its terminal state can still resume capture.
+    func discardPreparedOffer(_ proposalID: String) {
+        guard let offer = actionOffers[proposalID] else { return }
+        if offer.state == .running || executing.contains(proposalID) { return }
+        actionOffers[proposalID] = nil
+        onActionsChanged?()
+    }
 
     /// The user left the field or focus changed. Offers were prepared against
     /// that context, so they stop being valid whether or not the core has
@@ -288,18 +331,29 @@ final class CoreBridgeProvider: InlineCompletionProviding {
             return
         }
 
-        // Blocker 1: the offer's target was captured when the offer was
-        // minted, which may be many seconds and several keystrokes ago. An
-        // action can rewrite the user's text, so sending a saved target
-        // unchecked risks acting on a field they have left. Revalidate against
-        // the live field first and refuse on any mismatch.
-        guard let live = capture.liveTarget(allowingCaretPanelForPID: offer.target.pid) else {
-            finish(proposalID, .unavailable(reason: "Caret can no longer read the field this action was prepared for."))
-            return
-        }
-        if let mismatch = Self.staleness(offerTarget: offer.target, live: live) {
-            finish(proposalID, .unavailable(reason: mismatch))
-            return
+        if offer.target.elementID.isEmpty && offer.target.windowID.isEmpty {
+            let app = NSRunningApplication(processIdentifier: offer.target.pid)
+            let host = app.map {
+                HostSnapshot(pid: $0.processIdentifier, bundleID: $0.bundleIdentifier ?? "", terminated: $0.isTerminated)
+            }
+            if let mismatch = Self.hostMismatch(offerTarget: offer.target, host: host) {
+                finish(proposalID, .unavailable(reason: mismatch))
+                return
+            }
+        } else {
+            // Blocker 1: the offer's target was captured when the offer was
+            // minted, which may be many seconds and several keystrokes ago. An
+            // action can rewrite the user's text, so sending a saved target
+            // unchecked risks acting on a field they have left. Revalidate against
+            // the live field first and refuse on any mismatch.
+            guard let live = capture.liveTarget(allowingCaretPanelForPID: offer.target.pid) else {
+                finish(proposalID, .unavailable(reason: "Caret can no longer read the field this action was prepared for."))
+                return
+            }
+            if let mismatch = Self.staleness(offerTarget: offer.target, live: live) {
+                finish(proposalID, .unavailable(reason: mismatch))
+                return
+            }
         }
 
         Task { @MainActor in
@@ -402,6 +456,25 @@ final class CoreBridgeProvider: InlineCompletionProviding {
         }
     }
 
+    private func record(from offer: ActionOffer) -> CaretActionOffer {
+        var record = CaretActionOffer(
+            proposalID: offer.proposalID,
+            revision: offer.revision,
+            target: offer.target,
+            workflowID: offer.workflowID,
+            title: offer.title,
+            effect: offer.effect,
+            evidence: offer.evidence,
+            missingInputs: offer.missingInputs,
+            executionMethod: offer.executionMethod,
+            sampleOnly: offer.sampleOnly
+        )
+        if let reason = record.unavailabilityText {
+            record.state = .unavailable(reason: reason)
+        }
+        return record
+    }
+
     private func finish(_ proposalID: String, _ state: CaretActionOffer.State) {
         executing.remove(proposalID)
         guard var offer = actionOffers[proposalID] else { return }
@@ -419,21 +492,7 @@ final class CoreBridgeProvider: InlineCompletionProviding {
             onOffer?(InlineOffer(offer), generation)
 
         case .offer(.action(let offer)):
-            var record = CaretActionOffer(
-                proposalID: offer.proposalID,
-                revision: offer.revision,
-                target: offer.target,
-                workflowID: offer.workflowID,
-                title: offer.title,
-                effect: offer.effect,
-                evidence: offer.evidence,
-                missingInputs: offer.missingInputs,
-                executionMethod: offer.executionMethod,
-                sampleOnly: offer.sampleOnly
-            )
-            if let reason = record.unavailabilityText {
-                record.state = .unavailable(reason: reason)
-            }
+            let record = record(from: offer)
             actionOffers[offer.proposalID] = record
             // Workflow id and runnability only. The offer's text belongs to
             // the user and is never logged.

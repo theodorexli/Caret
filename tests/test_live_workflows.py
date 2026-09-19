@@ -626,6 +626,7 @@ class RegistryTests(unittest.TestCase):
     def test_the_action_table_matches_the_registered_ids(self):
         self.assertEqual(actions.workflow_for_action("book-calendar-link"), "book-calendar-link")
         self.assertEqual(actions.workflow_for_action("book-flight"), "book-flight")
+        self.assertEqual(actions.workflow_for_action("report-github-issue"), "report-github-issue")
         self.assertIsNone(actions.workflow_for_action("summarize"))
         with self.assertRaises(KeyError):
             actions.workflow_for_action("book-hotel")
@@ -634,7 +635,7 @@ class RegistryTests(unittest.TestCase):
             registry.register(adapter)
         self.assertEqual(
             sorted(item.descriptor.id for item in registry.all()),
-            ["book-calendar-link", "book-flight"],
+            ["book-calendar-link", "book-flight", "report-github-issue"],
         )
 
 

@@ -4,7 +4,7 @@ import threading
 import unittest
 
 from caret.context import ContextError, InputSnapshot, utf16_length, utf16_slice
-from caret.registry import Preparation, WorkflowDescriptor
+from caret.registry import Preparation, WorkflowDescriptor, WorkflowError
 from caret.router import (
     ACCESSIBILITY_REVOKED,
     APP_EXCLUDED,
@@ -386,6 +386,88 @@ class InlineRangeTests(unittest.TestCase):
     def test_a_range_that_splits_a_surrogate_pair_is_rejected(self):
         with self.assertRaisesRegex(ContextError, "surrogate"):
             utf16_slice("a🌊b", 1, 2)
+
+
+class InstallOfferTests(unittest.TestCase):
+    def setUp(self):
+        self.clock = Clock()
+        self.invalidated = []
+        self.published = []
+        self.router = Router(
+            RouterConfig(interval_seconds=0.0, failure_backoff_seconds=10.0),
+            on_invalidate=lambda offer, reason: self.invalidated.append((offer.proposal_id, reason)),
+            on_publish=lambda publication: self.published.append(publication),
+        )
+
+    def action_offer(self, ctx):
+        return build_action_offer(
+            ctx,
+            WorkflowDescriptor(
+                id="report-github-issue",
+                name="Report",
+                description="",
+                execution_method="computer-use-jev",
+            ),
+            Preparation(title="Open a GitHub issue", effect="Nothing until accept.", payload={"token": "t"}),
+            self.clock(),
+        )
+
+    def test_install_offer_clears_pending_so_take_due_returns_none(self):
+        self.router.submit(frame(1), self.clock())
+        explicit = frame(2, text="explicit")
+        offer = self.action_offer(explicit)
+        self.router.install_offer(explicit, offer)
+        self.assertIsNone(self.router.take_due(self.clock()))
+        self.assertEqual(self.router.current_offer.proposal_id, offer.proposal_id)
+
+    def test_install_offer_moves_target_and_revision_so_accept_succeeds(self):
+        explicit = frame(5, text="explicit")
+        offer = self.action_offer(explicit)
+        self.router.install_offer(explicit, offer)
+        accepted = self.router.accept(offer.proposal_id, offer.revision, offer.target, self.clock())
+        self.assertEqual(accepted.proposal_id, offer.proposal_id)
+
+    def test_install_offer_invalidates_the_previous_offer(self):
+        first = frame(1)
+        self.router.submit(first, self.clock())
+        first_offer = build_inline_offer(first, "hi", self.clock(), RouterConfig())
+        self.router.complete_offer(self.router.take_due(self.clock()), first_offer)
+        explicit = frame(2, text="explicit")
+        self.router.install_offer(explicit, self.action_offer(explicit))
+        self.assertEqual(self.invalidated[-1], (first_offer.proposal_id, "replaced-by-explicit-invoke"))
+
+    def test_an_in_flight_ambient_offer_is_discarded_after_install(self):
+        self.router.submit(frame(1), self.clock())
+        in_flight = self.router.take_due(self.clock())
+        explicit = frame(2, text="explicit")
+        installed = self.action_offer(explicit)
+        self.router.install_offer(explicit, installed)
+        publication = self.router.complete_offer(
+            in_flight, build_inline_offer(in_flight, "late", self.clock(), RouterConfig())
+        )
+        self.assertEqual(publication.status, "discarded")
+        self.assertEqual(self.router.current_offer.proposal_id, installed.proposal_id)
+
+    def test_an_in_flight_ambient_failure_is_discarded_after_install(self):
+        self.router.submit(frame(1), self.clock())
+        in_flight = self.router.take_due(self.clock())
+        explicit = frame(2, text="explicit")
+        installed = self.action_offer(explicit)
+        self.router.install_offer(explicit, installed)
+        publication = self.router.complete_failure(in_flight, "judge: boom")
+        self.assertEqual(publication.status, "discarded")
+        self.assertEqual([item.status for item in self.published], ["discarded"])
+        self.assertEqual(self.router.current_offer.proposal_id, installed.proposal_id)
+        later = frame(3, text="later still")
+        self.router.submit(later, self.clock())
+        taken = self.router.take_due(self.clock())
+        self.assertIsNotNone(taken)
+        self.assertEqual(taken.revision, 3)
+
+    def test_install_offer_with_a_revision_that_is_not_newer_raises(self):
+        self.router.submit(frame(5), self.clock())
+        with self.assertRaises(WorkflowError):
+            self.router.install_offer(frame(5, text="same"), self.action_offer(frame(5, text="same")))
 
 
 class ActionOfferTests(unittest.TestCase):

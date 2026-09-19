@@ -22,10 +22,11 @@ import unittest
 from pathlib import Path
 from queue import Empty, Queue
 
-from caret.bridge import Bridge
+from caret.bridge import END_OF_OUTPUT, Bridge, build_registry
 from caret.context import ContextFrame
 from caret.engine import Engine
-from caret.registry import WorkflowRegistry
+from caret.live_workflows.report_issue import ReportGithubIssueWorkflow
+from caret.registry import Availability, ExecutionResult, Preparation, WorkflowDescriptor, WorkflowError, WorkflowRegistry
 from caret.router import RouterConfig
 from support import RecordingJudge, RecordingWriter
 
@@ -499,6 +500,140 @@ class EventOrderTests(unittest.TestCase):
             "an offer written after its own invalidation lets a client show a preview "
             f"it has already been told to take down: {[event['event'] for event in events]}",
         )
+
+
+class BuiltInRegistryTests(unittest.TestCase):
+    def test_report_github_issue_is_registered_without_an_adapter_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = build_registry(ROOT / "fixtures" / "meeting.json", Path(tmp) / "caret.sqlite")
+            self.assertIsInstance(registry.get("report-github-issue"), ReportGithubIssueWorkflow)
+
+
+class ReportStub:
+    """A built-in-shaped adapter that never talks to GitHub or Jev."""
+
+    descriptor = WorkflowDescriptor(
+        id="report-github-issue",
+        name="Report a GitHub issue",
+        description="",
+        execution_method="computer-use-jev",
+    )
+
+    def availability(self, frame):
+        return Availability(False, "explicit only")
+
+    def prepare(self, frame):
+        if "closed-source" in frame.snapshot.nearby_text:
+            raise WorkflowError("This does not appear to be an open-source application.")
+        return Preparation(title="Open a GitHub issue", effect="Nothing until accept.", payload={"token": "t"})
+
+    def execute(self, frame, preparation):
+        return ExecutionResult(status="completed", summary="stub wrote nothing")
+
+    def cancel(self, preparation):
+        return ExecutionResult(status="cancelled", summary="cancelled")
+
+
+class InProcessPrepare:
+    def __init__(self):
+        self.output = OrderedOutput()
+        self.registry = WorkflowRegistry()
+        self.registry.register(ReportStub())
+
+        def factory(on_invalidate, on_publish):
+            return Engine(
+                RecordingJudge(route=["ABSTAIN"]),
+                RecordingWriter(),
+                self.registry,
+                RouterConfig(interval_seconds=0.0),
+                on_invalidate=on_invalidate,
+                on_publish=on_publish,
+            )
+
+        self.bridge = Bridge(factory, self.registry, __import__("io").StringIO(), self.output)
+        self._drain = threading.Thread(target=self.bridge._drain_output, name="prepare-drain", daemon=True)
+        self._drain.start()
+
+    def handle(self, payload):
+        before = len(self.output.messages())
+        self.bridge._handle_line(json.dumps(payload))
+        deadline = time.monotonic() + TIMEOUT
+        while time.monotonic() < deadline:
+            messages = self.output.messages()
+            if len(messages) > before:
+                return messages
+            time.sleep(0.01)
+        return self.output.messages()
+
+    def close(self):
+        self.bridge._outbox.put(END_OF_OUTPUT)
+        self._drain.join(timeout=2)
+
+
+class PrepareWorkflowTests(unittest.TestCase):
+    def setUp(self):
+        self.session = InProcessPrepare()
+
+    def tearDown(self):
+        self.session.close()
+
+    def test_workflow_prepare_replies_with_the_offer_and_emits_no_event(self):
+        messages = self.session.handle(
+            {
+                "id": 7,
+                "method": "workflow.prepare",
+                "params": {"workflow_id": "report-github-issue", "frame": synthetic_frame(3, text="It crashed")},
+            }
+        )
+        self.assertEqual(len(messages), 1)
+        reply = messages[0]
+        self.assertEqual(reply["id"], 7)
+        self.assertTrue(reply["ok"])
+        self.assertEqual(reply["result"]["offer"]["workflow_id"], "report-github-issue")
+        self.assertNotIn("event", reply)
+
+    def test_workflow_prepare_returns_workflow_error_without_a_failed_event(self):
+        messages = self.session.handle(
+            {
+                "id": 8,
+                "method": "workflow.prepare",
+                "params": {
+                    "workflow_id": "report-github-issue",
+                    "frame": synthetic_frame(3, text="closed-source app crash"),
+                },
+            }
+        )
+        self.assertEqual(len(messages), 1)
+        reply = messages[0]
+        self.assertFalse(reply["ok"])
+        self.assertEqual(reply["error"]["code"], "workflow_error")
+        self.assertIn("open-source", reply["error"]["message"])
+        self.assertNotIn("event", reply)
+
+    def test_prepare_then_accept_does_not_emit_failed(self):
+        messages = self.session.handle(
+            {
+                "id": 1,
+                "method": "workflow.prepare",
+                "params": {"workflow_id": "report-github-issue", "frame": synthetic_frame(3, text="It crashed")},
+            }
+        )
+        offer = messages[-1]["result"]["offer"]
+        messages = self.session.handle(
+            {
+                "id": 2,
+                "method": "offer.accept",
+                "params": {
+                    "proposal_id": offer["proposal_id"],
+                    "revision": offer["revision"],
+                    "target": offer["target"],
+                },
+            }
+        )
+        reply = messages[-1]
+        self.assertTrue(reply["ok"])
+        self.assertEqual(reply["result"]["status"], "completed")
+        self.assertFalse(any(message.get("event") == "failed" for message in messages))
 
 
 if __name__ == "__main__":
