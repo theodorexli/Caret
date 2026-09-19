@@ -1,0 +1,33 @@
+{
+  "kind": "clipboard",
+  "n": 3,
+  "records": [
+    {
+      "timestamp": "2026-09-19T14:45:52-04:00",
+      "app": "Mail",
+      "title": "New Message",
+      "text_source": "clipboard",
+      "structure_source": null,
+      "structure": null,
+      "text": "Nov 6–8, 2026 · Oranjestad, Aruba"
+    },
+    {
+      "timestamp": "2026-09-19T14:45:02-04:00",
+      "app": "Mail",
+      "title": "Riley Vargas — Re: Aruba dates",
+      "text_source": "clipboard",
+      "structure_source": null,
+      "structure": null,
+      "text": "riley.vargas@pixelharbor.example"
+    },
+    {
+      "timestamp": "2026-09-19T14:44:11-04:00",
+      "app": "Calendar",
+      "title": "November 2026",
+      "text_source": "clipboard",
+      "structure_source": null,
+      "structure": null,
+      "text": "Thu Nov 5 after 18:00 ET · JFK → AUA"
+    }
+  ]
+}

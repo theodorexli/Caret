@@ -1,0 +1,63 @@
+{
+  "kind": "minutes",
+  "n": 3,
+  "records": [
+    {
+      "timestamp": "2026-09-19T13:46:18-05:00",
+      "app": "Mail",
+      "title": "New Message",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXTextField", "label": "text field", "text": "Luis Shah <luis.shah@example.com>", "depth": 4},
+        {"role": "AXTextArea", "label": "text entry area", "text": "Tío Luis —\n\nMarcus and I are taking the kids to Cancún October 12–19. Any chance you can fly over from San José for a few days and meet the family?\n\nWe could do lunch on the 14th or 15th, or a beach morning if that's easier. Just you — we are not looping in the rest of the cousins on this.\n\n— Priya", "depth": 5}
+      ],
+      "text": "To: Luis Shah <luis.shah@example.com>\nSubject: Cancún Oct 12–19 — can you meet us?\n\nTío Luis —\n\nMarcus and I are taking the kids to Cancún October 12–19. Any chance you can fly over from San José for a few days and meet the family?\n\nWe could do lunch on the 14th or 15th, or a beach morning if that's easier. Just you — we are not looping in the rest of the cousins on this.\n\n— Priya"
+    },
+    {
+      "timestamp": "2026-09-19T13:45:40-05:00",
+      "app": "Mail",
+      "title": "New Message",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXTextArea", "label": "text entry area", "text": "Tío Luis —\n\nMarcus and I are taking the kids to Cancún October 12–19.", "depth": 5}
+      ],
+      "text": "New Message\nTío Luis —\n\nMarcus and I are taking the kids to Cancún October 12–19."
+    },
+    {
+      "timestamp": "2026-09-19T13:44:50-05:00",
+      "app": "Mail",
+      "title": "Marcus Shah — Re: Cancun / Tío Luis",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXStaticText", "label": "text", "text": "From: Marcus Shah <marcus.shah@example.com>", "depth": 4},
+        {"role": "AXTextArea", "label": "text entry area", "text": "Priya — Oct 12–19 still works. I told Luis we'd email him this weekend. Don't add anyone else. If he can come, we pick one lunch, not a group poll. — M", "depth": 5}
+      ],
+      "text": "From: Marcus Shah <marcus.shah@example.com>\nTo: Priya Shah <priya.shah@example.com>\nSubject: Re: Cancun / Tío Luis\n\nPriya — Oct 12–19 still works. I told Luis we'd email him this weekend. Don't add anyone else. If he can come, we pick one lunch, not a group poll. — M"
+    },
+    {
+      "timestamp": "2026-09-19T13:44:12-05:00",
+      "app": "Mail",
+      "title": "Marcus Shah — Re: Cancun / Tío Luis",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXStaticText", "label": "text", "text": "On Sep 18, Priya wrote: I'll draft Luis tonight. Cancún 12th–19th. Kids are off school that week.", "depth": 5}
+      ],
+      "text": "On Sep 18, Priya wrote: I'll draft Luis tonight. Cancún 12th–19th. Kids are off school that week."
+    },
+    {
+      "timestamp": "2026-09-19T13:43:36-05:00",
+      "app": "Calendar",
+      "title": "October 2026",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXStaticText", "label": "text", "text": "Mon 12 – Sun 19  Family vacation  Cancún", "depth": 5}
+      ],
+      "text": "October 2026\nMon 12 – Sun 19  Family vacation  Cancún\nWed 14  Tentative  Lunch with Luis if he can fly SJO → CUN"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "kind": "windows",
+  "n": 3,
+  "records": [
+    {
+      "timestamp": "2026-09-19T14:46:12-04:00",
+      "app": "Mail",
+      "title": "New Message",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXHeading", "label": "heading", "text": "New Message", "depth": 2},
+        {"role": "AXTextField", "label": "text field", "text": "Riley Vargas <riley.vargas@pixelharbor.example>", "depth": 4},
+        {"role": "AXTextField", "label": "text field", "text": "Cursor hackathon Aruba — can you do Nov 6–8?", "depth": 4},
+        {"role": "AXTextArea", "label": "text entry area", "text": "Riley —\n\nThere's a Cursor hackathon in Oranjestad, Aruba, Friday Nov 6 through Sunday Nov 8. I'm coming from JFK; you're SFO. Want to pair on the frontend/db slice?\n\nI can leave Thursday Nov 5 after 6pm ET. Send three 30-min windows this week that work for your afternoon PT / my evening ET. Don't buy tickets from this thread.\n\n— Maya Okonkwo\nNorthloop data platform, Brooklyn", "depth": 5},
+        {"role": "AXButton", "label": "button", "text": "Send", "depth": 3}
+      ],
+      "text": "To: Riley Vargas <riley.vargas@pixelharbor.example>\nSubject: Cursor hackathon Aruba — can you do Nov 6–8?\n\nRiley —\n\nThere's a Cursor hackathon in Oranjestad, Aruba, Friday Nov 6 through Sunday Nov 8. I'm coming from JFK; you're SFO. Want to pair on the frontend/db slice?\n\nI can leave Thursday Nov 5 after 6pm ET. Send three 30-min windows this week that work for your afternoon PT / my evening ET. Don't buy tickets from this thread.\n\n— Maya Okonkwo\nNorthloop data platform, Brooklyn"
+    },
+    {
+      "timestamp": "2026-09-19T14:44:20-04:00",
+      "app": "Calendar",
+      "title": "November 2026",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXHeading", "label": "heading", "text": "November 2026", "depth": 2},
+        {"role": "AXStaticText", "label": "text", "text": "Thu 5  Busy 18:00–20:00  Warehouse deploy window", "depth": 5},
+        {"role": "AXStaticText", "label": "text", "text": "Fri 6 – Sun 8  Tentative  Cursor Hackathon · Oranjestad", "depth": 5},
+        {"role": "AXStaticText", "label": "text", "text": "Mon 9  10:00  Oncall handoff", "depth": 5}
+      ],
+      "text": "November 2026\nThu 5  Busy 18:00–20:00  Warehouse deploy window\nFri 6 – Sun 8  Tentative  Cursor Hackathon · Oranjestad\nMon 9  10:00  Oncall handoff"
+    },
+    {
+      "timestamp": "2026-09-19T14:43:18-04:00",
+      "app": "TablePlus",
+      "title": "northloop-prod — query",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXStaticText", "label": "text", "text": "northloop-prod", "depth": 2},
+        {"role": "AXTextArea", "label": "text entry area", "text": "EXPLAIN ANALYZE SELECT trip_id, status FROM logistics.shipments WHERE updated_at > now() - interval '15 minutes';", "depth": 4},
+        {"role": "AXStaticText", "label": "text", "text": "Seq Scan  rows=128  4.2ms", "depth": 5}
+      ],
+      "text": "northloop-prod\nEXPLAIN ANALYZE SELECT trip_id, status FROM logistics.shipments WHERE updated_at > now() - interval '15 minutes';\nSeq Scan  rows=128  4.2ms"
+    }
+  ]
+}

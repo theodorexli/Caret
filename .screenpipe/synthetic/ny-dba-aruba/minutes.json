@@ -1,0 +1,65 @@
+{
+  "kind": "minutes",
+  "n": 3,
+  "records": [
+    {
+      "timestamp": "2026-09-19T14:46:12-04:00",
+      "app": "Mail",
+      "title": "New Message",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXTextField", "label": "text field", "text": "Riley Vargas <riley.vargas@pixelharbor.example>", "depth": 4},
+        {"role": "AXTextArea", "label": "text entry area", "text": "Riley —\n\nThere's a Cursor hackathon in Oranjestad, Aruba, Friday Nov 6 through Sunday Nov 8. I'm coming from JFK; you're SFO. Want to pair on the frontend/db slice?\n\nI can leave Thursday Nov 5 after 6pm ET. Send three 30-min windows this week that work for your afternoon PT / my evening ET. Don't buy tickets from this thread.\n\n— Maya Okonkwo", "depth": 5}
+      ],
+      "text": "To: Riley Vargas <riley.vargas@pixelharbor.example>\nSubject: Cursor hackathon Aruba — can you do Nov 6–8?\n\nRiley —\n\nThere's a Cursor hackathon in Oranjestad, Aruba, Friday Nov 6 through Sunday Nov 8. I'm coming from JFK; you're SFO. Want to pair on the frontend/db slice?\n\nI can leave Thursday Nov 5 after 6pm ET. Send three 30-min windows this week that work for your afternoon PT / my evening ET. Don't buy tickets from this thread.\n\n— Maya Okonkwo"
+    },
+    {
+      "timestamp": "2026-09-19T14:45:41-04:00",
+      "app": "Mail",
+      "title": "New Message",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXTextArea", "label": "text entry area", "text": "Riley —\n\nThere's a Cursor hackathon in Oranjestad, Aruba, Friday Nov 6 through Sunday Nov 8.", "depth": 5}
+      ],
+      "text": "New Message\nRiley —\n\nThere's a Cursor hackathon in Oranjestad, Aruba, Friday Nov 6 through Sunday Nov 8."
+    },
+    {
+      "timestamp": "2026-09-19T14:45:08-04:00",
+      "app": "Mail",
+      "title": "Riley Vargas — Re: Aruba dates",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXStaticText", "label": "text", "text": "From: Riley Vargas <riley.vargas@pixelharbor.example>", "depth": 4},
+        {"role": "AXStaticText", "label": "text", "text": "To: Maya Okonkwo <maya.okonkwo@northloop.example>", "depth": 4},
+        {"role": "AXTextArea", "label": "text entry area", "text": "Maya — I'm in if Nov 6–8 holds. I'm off that Friday. Send times that miss the 10:00 PT standup. I'll book my own SFO→AUA after we lock a planning call. — Riley", "depth": 5}
+      ],
+      "text": "From: Riley Vargas <riley.vargas@pixelharbor.example>\nTo: Maya Okonkwo <maya.okonkwo@northloop.example>\nSubject: Re: Aruba dates\n\nMaya — I'm in if Nov 6–8 holds. I'm off that Friday. Send times that miss the 10:00 PT standup. I'll book my own SFO→AUA after we lock a planning call. — Riley"
+    },
+    {
+      "timestamp": "2026-09-19T14:44:20-04:00",
+      "app": "Calendar",
+      "title": "November 2026",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXStaticText", "label": "text", "text": "Fri 6 – Sun 8  Tentative  Cursor Hackathon · Oranjestad", "depth": 5}
+      ],
+      "text": "November 2026\nThu 5  Busy 18:00–20:00  Warehouse deploy window\nFri 6 – Sun 8  Tentative  Cursor Hackathon · Oranjestad"
+    },
+    {
+      "timestamp": "2026-09-19T14:43:18-04:00",
+      "app": "TablePlus",
+      "title": "northloop-prod — query",
+      "text_source": "accessibility",
+      "structure_source": "accessibility",
+      "structure": [
+        {"role": "AXStaticText", "label": "text", "text": "northloop-prod", "depth": 2},
+        {"role": "AXTextArea", "label": "text entry area", "text": "EXPLAIN ANALYZE SELECT trip_id, status FROM logistics.shipments WHERE updated_at > now() - interval '15 minutes';", "depth": 4}
+      ],
+      "text": "northloop-prod\nEXPLAIN ANALYZE SELECT trip_id, status FROM logistics.shipments WHERE updated_at > now() - interval '15 minutes';"
+    }
+  ]
+}
