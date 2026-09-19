@@ -4,8 +4,8 @@
 **Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Level 3 plan written. Operator constraint: reuse computer use, do not invent a GitHub client.
-- Decisions: `gh` for read-only search in prepare; computer-use-jev for the accepted write; skill note + picker CLI hook; fail-fast when the app is not a public GitHub issues repo.
+- Preflight 1 failed as fixable: picker had no accept path and no legal Mac `ContextFrame`.
+- Replanned: `workflow.prepare` + `explicitActionFrame` + existing `offer.accept`. `gh` still searches; Jev still writes.
 
 ## Next Step
-- Preflight the plan, then wait for the operator to run `/niko-build`.
+- Re-run preflight, then `/niko-build` if it passes.
