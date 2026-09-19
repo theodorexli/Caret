@@ -63,17 +63,17 @@ sequenceDiagram
 ## Component Analysis
 
 ### Affected Components
-- `caret/live_workflows/report_issue.py` (new): WorkflowAdapter. `prepare` is `gh`-only and read-only. Empty complaint, missing `gh`, or not-OSS raise `WorkflowError` with a visible sentence (not a `missing_inputs` offer). `execute` runs computer-use-jev from pending state only, and refuses a write when the preparation payload `sample` flag is set. `availability` may report Jev missing; `prepare_named` must not use a blanket `availability` gate.
+- `caret/live_workflows/report_issue.py` (new): WorkflowAdapter. `prepare` is `gh`-only and read-only. Empty complaint, missing `gh`, or not-OSS raise `WorkflowError` with a visible sentence (not a `missing_inputs` offer). `execute` runs computer-use-jev from pending state only, and refuses a write when the preparation payload `sample` flag is set. `availability` is False unless the frame carries an explicit-invoke mark (a `SourceRecord` named `explicit_invoke`), so a jev/gateway judge does not see this id in `registry.choices()`. `prepare_named` does not use a blanket `availability` gate.
 - `caret/live_workflows/github.py` (new): Injectable `gh` ports. Display name is `SourceRecord(name="frontmost_app").detail`. Bundle-id tail is a fallback search token only.
 - `caret/router.py`: New `install_offer(frame, offer)` updates revision and target, sets `_offer`, **clears `_pending`**, does **not** take the ambient in-flight slot, and bypasses cadence / unchanged-signature / suppression. Dedicated tests that a later `pump`/`take_due` does not evaluate that frame through the judge.
 - `caret/engine.py`: `prepare_named(workflow_id, frame)` calls the adapter, then `install_offer`. It does not call `submit`. Not-OSS is a raised `WorkflowError`, not `complete_failure`.
 - `caret/bridge.py`: `workflow.prepare` is request-reply. Success: `{offer: ...}` on the same id. Failure: coded `workflow_error` with the sentence. No `failed` event. `build_registry` **registers `ReportGithubIssueWorkflow()` as a built-in** and skips its `workflows.json` seed. `adapters()` / `--adapter` is not the happy-path load.
 - `caret/live_workflows/actions.py` and `__init__.py`: mapping, `_LAZY`, `adapters()` for the live package; still required so `test_the_action_table_matches_the_registered_ids` holds.
-- `caret/workflows.json`, skill JSON, skill note: catalog + picker identity. Not a gateway transform.
-- `apps/mac/Sources/Caret/CaretApp.swift`: Freeze a `HostContext` (pid, bundle id, localized name) in `showPanel` **before** `panel?.present` makes Caret frontmost. `onRun` for this action id must **not** `hidePanel`. Keep the panel visible and capture paused. Show `workflow_error` with `CaretActionStatusRow` on the **browse** panel. Do not use `failSkillPreview` (that view exists only on `GatewayActionPanel`, and this id must not join `GatewaySkillActions`). Do not write `backendStatus`.
+- `caret/workflows.json` and `caret/skills/report-github-issue/default.json`: catalog + picker identity. A skill note is optional documentation; **JSON under `caret/skills/<id>/` is what creates `filteredSkills`**. Unit 3 must seed that JSON. Not a gateway transform.
+- `apps/mac/Sources/Caret/CaretApp.swift`: Freeze a `HostContext` (pid, bundle id, localized name) in `showPanel` **before** `panel?.present` makes Caret frontmost. `onRun` for this action id must **not** `hidePanel`. Keep the panel visible and capture paused **until accept**. Show `workflow_error` with a `CaretActionStatusRow` rendered **next to `actionOffers` / `runnableOffers`**, not inside the `filteredSkills.isEmpty` branch (that row is gone once the JSON skill exists and has been clicked). Do not use `failSkillPreview`. Do not write `backendStatus`. On accept, `runAction` must **claim the offer, then `panel?.orderOut` before Jev starts**. Do not call `hidePanel` there: that unpauses capture and `invalidateContextualOffers` drops the in-flight offer.
 - `apps/mac/Sources/CaretCore/FocusedTargetCapture.swift`: `explicitActionFrame(host:)` always increments revision and uses the frozen `HostContext`, never `NSWorkspace.frontmostApplication` or a post-present `lastTarget`. Focused field if it still belongs to that host pid, else empty `nearby_text`. **Always read `NSPasteboard.general`**, even when `clipboardEnabled` is false. Attach `frontmost_app` from `HostContext.localizedName`. Do not depend on Screenpipe history for the Mac happy path.
 - `apps/mac/Sources/Caret/CoreBridgeProvider.swift` and `CoreBridgeClient.swift`: `prepareWorkflow` awaits the reply and **replaces** `actionOffers` with that one offer so a late ambient `complete_offer` cannot steal Cmd-1. `runAction` for a no-field explicit offer revalidates **pid and bundle_id only** via a predicate next to `staleness()`; it must not require `liveTarget`. After that check, send the **offer's own target** into `offer.accept`, not a rebuilt live-field target.
-- `apps/mac/Sources/Caret/SkillActionRunner.swift`: This id calls `prepareWorkflow`. No gateway apply.
+- `apps/mac/Sources/Caret/SkillActionRunner.swift`: This class has no bridge. `CaretApp.onRun` injects a `prepareWorkflow` callback. Do not spawn a second bridge. No gateway apply.
 - `docs/bridge-protocol.md`, `docs/live-workflow-adapters.md`, `docs/input-pipeline.md`.
 
 ### Cross-Module Dependencies
@@ -183,7 +183,7 @@ sequenceDiagram
 1. Stub tests: `HostContext` is taken before present and survives Caret becoming frontmost; `explicitActionFrame` uses that host, not `frontmostApplication`; pasteboard is read when `clipboardEnabled` is false; no-field snapshot is legal; `runAction` accepts pid/bundle match without `liveTarget` and sends the offer target; client encodes `workflow.prepare`
 2. Stub interface: `HostContext`, `explicitActionFrame(host:)`, `prepareWorkflow`, `onRun` keep-panel branch, browse-panel status row, pid/bundle predicate next to `staleness()`
 3. Write tests and run red
-4. Write code and run green: `HostContext` is captured before present; panel stays open; reply offer replaces `actionOffers`; not-OSS uses `CaretActionStatusRow` on the browse panel, not `failSkillPreview` or `backendStatus`
+4. Write code and run green: `HostContext` before present; panel stays open through the reply; status row sits beside `actionOffers`; accept claims then `orderOut` without `hidePanel`; `prepareWorkflow` is injected into `SkillActionRunner`
 
 ### 6. Docs — prose/policy
 
@@ -212,6 +212,8 @@ No new technology — validation not required.
 - Relied on Screenpipe history on Mac: complaint is nearby_text + pasteboard + `frontmost_app` only.
 - Searched GitHub for Caret because the picker stole frontmost: `HostContext` is frozen before present.
 - Showed not-OSS only on the gateway panel: browse panel `CaretActionStatusRow` is specified.
+- Put the status row in the empty-skills branch: it sits next to `actionOffers` after the JSON skill is clicked.
+- Left the floating panel over Jev: accept `orderOut`s before execute, without `hidePanel`.
 
 ## Status
 

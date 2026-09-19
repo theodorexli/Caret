@@ -4,8 +4,8 @@
 **Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Preflight 3 failed as fixable: picker makes Caret frontmost, and `failSkillPreview` is gateway-only.
-- Replanned: `HostContext` frozen at `showPanel`; not-OSS uses `CaretActionStatusRow` on the browse panel.
+- Level 3 plan for a Report GitHub issue skill: `gh` searches in prepare, computer-use-jev writes after accept.
+- Four preflights. Latest fold: status row next to `actionOffers`; `orderOut` before Jev without `hidePanel`; `HostContext` at `showPanel`; request-reply `workflow.prepare`.
 
 ## Next Step
-- Re-run preflight. Do not build until it passes.
+- Operator: run another `/niko-preflight`, or `/niko-build` against this plan. A fifth autonomous preflight was not started.
