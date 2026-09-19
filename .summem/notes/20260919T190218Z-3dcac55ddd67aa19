@@ -1,0 +1,1 @@
+Pinned screenpipe@0.4.50 is Developer ID identifier screenpipe, not Caret; it calls AXIsProcessTrustedWithOptions and retries while waiting. Granting Caret Accessibility does not stop its dialog.
