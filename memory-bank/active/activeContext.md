@@ -1,11 +1,11 @@
 # Active Context
 
 ## Current Task: caret-report-github-issue
-**Phase:** QA
+**Phase:** REFLECT - COMPLETE
 
 ## What Was Done
 - Built replan 6 end to end. Operator overrode the leftover replan-5 `FAIL (fixable)` gate.
-- Units 1–6 implemented. QA failed two cancel-path holes; those are now fixed.
+- Units 1–6 implemented. First QA failed two cancel-path holes; those were fixed and re-QA passed.
 - `make check` after the fix: 329 Python (4 skipped), 98 CaretTests, 72 CaretCoreTests, sources pin, Xcode Debug build.
 
 ## Files created or modified
@@ -27,4 +27,4 @@
 - Pre-existing Python-discovery XCTest expected `/usr/bin/python3` while discovery prefers Homebrew 3.14; assertion now matches the candidate list. Not a product change.
 
 ## Next Step
-- Re-run QA on the cancel-path fixes.
+- Standalone task: `/niko-archive` when the operator wants the archive. Draft PR is next per operator request.

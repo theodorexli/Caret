@@ -330,16 +330,17 @@ Prepare needs network. Execute needs `CARET_COMPUTER_USE_JEV` and `TYPESAFE_API_
 
 ## QA Results
 
-❌ FAIL — two cancel-path holes must change before acceptance. Happy-path prepare/install/accept/Jev matches the plan.
+✅ PASS — prior cancel-path blockers are fixed. Happy-path research, `workflow.prepare`, `install_offer`, offered-only Cmd-1, stand-down, and terminal resume match the plan. Advisories only.
 
-### Blocking
+### Prior blockers, now closed
 
-1. **Cancel does not dispose a late `prepareWorkflow`.** `AppDelegate` bumps `explicitPrepareGeneration` and ignores the awaited return, but `CoreBridgeProvider.prepareWorkflow` already replaced the offer set and fired `onActionsChanged` before that check. Escape-then-reopen can show the cancelled offer and arm Cmd-1. Sol-3 said dropping the reply is enough; the install is a side effect of the call, so the reply is not what was dropped.
-2. **`explicitStatus` is not cleared on hide or `preparePanel`.** `beginExplicitInvoke` leaves `"Searching GitHub…"`. `clearPanelScope` / `preparePanel` reset only `explicitPrepareInFlight` and `explicitSessionActionID`. After Escape, every later panel open keeps that sentence. The plan required clearing explicit state so a stale sentence never reappears. `resumeAfterExplicitRun` should still set the terminal summary *after* `clearPanelScope`; do not also wipe status in `preparePanel` or that summary dies on the next `showPanel`.
+1. **Late `prepareWorkflow` install is discarded.** `runExplicitInvoke` calls `discardPreparedOffer` when `explicitPrepareGeneration` no longer matches. That removes a cancelled `.offered` row and fires `onActionsChanged`, so Escape-during-search cannot leave a Cmd-1 target. A `.running` row is left alone.
+2. **`explicitStatus` clears on hide, not on the next open.** `clearPanelScope` (used by `hidePanel` and `resumeAfterExplicitRun`) clears the searching sentence. `preparePanel` does not, so `resumeAfterExplicitRun`'s `failExplicitInvoke(summary)` after that clear still survives the next `showPanel`.
 
 ### Advisories
 
-- `explicitSessionActionID` is written and never read. Resume identity is `explicitProposalID`, which is the right seam.
+- Escape after a successful prepare still leaves the shown offer in the provider store. Reopen can re-arm Cmd-1 on that row until an ambient invalidate lands. Distinct from the late-install hole; accept still hits `Router.accept`.
+- `explicitSessionActionID` is written and never read. Resume identity is `explicitProposalID`.
 - User-visible match evidence is the issue title, not a body summary. The GET is used only for token overlap.
 - Jev templates interpolate only slug or issue URL. The complaint never reaches the GitHub form unless the user pastes it. Planned, still a weak product.
 - `_run_jev` is a copy of `NativeComputerUseWorkflow.execute`. Planned mirror, still DRY debt.
@@ -356,4 +357,5 @@ Prepare needs network. Execute needs `CARET_COMPUTER_USE_JEV` and `TYPESAFE_API_
 - [x] Pre-Mortem complete
 - [x] Preflight
 - [x] Build
-- [ ] QA
+- [x] QA
+- [x] Reflect

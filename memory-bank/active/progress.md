@@ -237,3 +237,25 @@ Add a Caret skill that pauses the current app, understands a complaint, finds th
 * Insights
     - The generation Int cannot fence a side effect that already ran inside `prepareWorkflow`
     - Clearing `explicitStatus` belongs on `clearPanelScope` (cancel and resume), not on `preparePanel` (next open must still show the terminal summary)
+
+## 2026-09-19 - QA - COMPLETE (PASS)
+
+* Work completed
+    - Re-reviewed replan 6 after the cancel-path build fix against CaretApp, CoreBridgeProvider, the Python port/adapter/router/bridge path, the planned tests, and the three docs
+    - Wrote `memory-bank/active/.qa-validation-status` with first line `PASS`
+* Decisions made
+    - PASS with advisories. The two prior blockers are closed. Not a plan rewrite.
+    - `discardPreparedOffer` plus `clearPanelScope` clearing `explicitStatus` match the intended cancel/resume seams
+* Insights
+    - Dropping the Swift reply is enough only when the Mac store row is also removed after the install side effect
+    - Hide after a shown offer still leaves that row; that is leftover-session persistence, not the late-install hole QA failed on
+
+## 2026-09-19 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote `memory-bank/active/reflection/reflection-caret-report-github-issue.md`
+    - Reconciled `systemPatterns.md`, `productContext.md`, and `techContext.md` for the explicit-invoke lane and the new catalog row
+* Decisions made
+    - Standing contracts recorded: `syncActionOffers` sole writer; `workflow.prepare` does not `submit`; GitHub research is stdlib HTTP with no token
+* Insights
+    - Generation fencing without undoing `prepareWorkflow`'s install is not cancel

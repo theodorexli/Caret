@@ -1,0 +1,5 @@
+PASS
+
+Level 3 task `caret-report-github-issue`, replan 6 after the cancel-path build fix. Happy-path prepare/install/accept/Jev matches the plan. The two prior blocking holes are closed: a late `prepareWorkflow` install is removed from the provider store when the generation no longer matches, and `clearPanelScope` clears `explicitStatus` while `preparePanel` leaves a terminal summary for the next open.
+
+Advisories remain (unused `explicitSessionActionID`, title-only match evidence, templated Jev goals omit the complaint, copied `_run_jev`, stale `systemPatterns.md` seed count, `workflow.prepare` can still emit `invalidated` for a superseded ambient offer, hide after a shown offer does not discard that row). None of those must change before acceptance.
