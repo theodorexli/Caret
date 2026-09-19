@@ -90,4 +90,4 @@ No new technology - validation not required
 - [x] Pre-Mortem complete
 - [x] Preflight
 - [x] Build
-- [x] QA — FAIL: documentation says every existing listener is adopted and produces a lease, but a non-Screenpipe listener fails the required health check and writes no lease. Build must correct the wording.
+- [x] QA — PASS (second pass). Prior FAIL resolved: README and techContext now match the health-gated lease. Advisories: unused `http` flag in test `bindLocal`; productContext still omits the port-free qualifier (plan did not require that file).

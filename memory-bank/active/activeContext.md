@@ -1,10 +1,10 @@
 # Active Context
 
 ## Current Task: caret-screenpipe-launch-if-port-free
-**Phase:** BUILD - COMPLETE
+**Phase:** REFLECT - COMPLETE
 
 ## What Was Done
-- Documentation-only rerun after QA FAIL: lease write requires pin-version `/health`; an occupied port is not enough
+- Reflection written. Persistent reconcile: systemPatterns updated for port-gated launch; productContext and techContext skipped (techContext already correct; product altitude still true).
 
 ## Next Step
-- QA
+- Archive (operator already invoked `/niko-archive`)

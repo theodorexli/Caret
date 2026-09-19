@@ -1,0 +1,5 @@
+PASS
+
+QA run 2026-09-19 (second pass), task caret-screenpipe-launch-if-port-free (Level 2). Reviewed the port-gated supervisor, Info.plist merge, tests, README, and techContext against the approved plan and project brief. Prior FAIL is resolved: docs no longer claim every occupied port is adopted and leased.
+
+No blocking findings. Advisories only: unused `http` flag in test helper `bindLocal`; productContext still omits the port-free qualifier (plan did not require that file).

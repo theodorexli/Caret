@@ -88,3 +88,23 @@ Caret must launch pinned Screenpipe on app start when the expected port is free,
     - README.md and techContext.md incorrectly say any occupied port is adopted and produces a lease; a listener that does not return the pinned Screenpipe version fails the health gate and writes no lease
 * Next step
     - Rerun Build to correct the documentation, then rerun QA
+
+## 2026-09-19 - QA - COMPLETE (PASS)
+
+* Work completed
+    - Re-reviewed the supervisor, Info.plist merge, tests, README, and techContext against the approved Level 2 plan after the documentation-only Build rerun
+    - Result: `PASS` (advisories only)
+* Decisions made
+    - Prior FAIL is resolved: README and techContext now state no spawn on a taken port and a lease only after pin-version `/health`
+    - Implementation is acceptable as-is; unused test `http` flag and productContext altitude are non-blocking
+* Insights
+    - Built Debug `Caret.app` still expands `CaretProjectRoot` to the repository root; work remains on `feat/caret-screenpipe-launch-if-port-free`
+
+## 2026-09-19 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote reflection; reconciled persistent files (systemPatterns only)
+* Decisions made
+    - productContext skip — launch-on-3031 remains true at product altitude
+    - techContext skip — already states port-free spawn and health-gated lease
+    - systemPatterns updated — standing contract is port-gated spawn plus health-gated lease
