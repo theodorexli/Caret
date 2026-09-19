@@ -27,3 +27,13 @@ Fix Translate so it translates the current selection when text is selected, and 
     - A live empty selection means clipboard, not a remembered phrase
 * Insights
     - The shared gateway path hid this: no selection still had a caret line, and a frontmost Caret published a nil target
+
+## 2026-09-19 - QA - COMPLETE (PASS)
+
+* Work completed
+    - Semantic review of `SkillActionInput`, Translate target resolution, and `SkillActionInputTests` against the project brief
+    - Recorded PASS in `.qa-validation-status`
+* Decisions made
+    - Accept the implementation as-is; advisories do not require a Build rerun
+* Insights
+    - `SelectionMonitor` publishes the same nil when Caret is frontmost and when no text field is focused, so `rememberedSelection` cannot tell those cases apart

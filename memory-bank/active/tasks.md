@@ -13,3 +13,10 @@
 - `apps/mac/Sources/Caret/SkillActionRunner.swift` — `SkillActionInput.sourceText` / `translateTarget`; runner uses them
 - `apps/mac/Sources/Caret/CaretApp.swift` — `rememberedSelection`; translate target resolution
 - `apps/mac/Tests/SkillActionInputTests.swift` — selection vs clipboard vs caret line
+
+## QA
+
+**Result:** PASS
+
+- Completeness holds: Translate takes a non-empty selection, otherwise the clipboard, and never the caret line. Other gateway skills still use the caret-line fallback.
+- Advisories (non-blocking): Translate skips `refreshNow()`; `rememberedSelection` is kept on every nil publish, not only Caret-frontmost. Neither breaks the two happy-path use cases.
