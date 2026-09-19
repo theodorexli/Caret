@@ -1,11 +1,11 @@
 # Active Context
 
 ## Current Task: caret-screenpipe-detached-launch
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Intent restated and approved: option 1+3 on a feature branch (direct `screenpipe` exec, start outside Caret’s process tree). Caret signing out of scope.
-- Complexity: Level 2. Launch/TCC bug in one subsystem (supervisor + pin + tests). Approach already decided.
+- Level 2 plan: pin launch becomes `screenpipe record …`; supervisor resolves that Mach-O and bootstraps `dev.caret.hackathon.screenpipe` on `:3031`; adopt/lease unchanged; live parent+perm check in Build
+- Caret signing still out of scope
 
 ## Next Step
-- Load the Level 2 workflow and run plan.
+- Preflight validation
