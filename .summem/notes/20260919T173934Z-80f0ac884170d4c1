@@ -1,0 +1,1 @@
+Caret keeps five upstreams: KeyType, GhostType, Computer Use Jev, Skyvern and Screenpipe. docs/input-pipeline.md defines the proposed shared Jev/context/workflow handoff; the current action UI does not call the Python CLI.

@@ -2,6 +2,8 @@
 
 This page is for teammates connecting live services to the starter. The current CLI accepts sample data only so fixture output cannot silently become a real email.
 
+The selected packages, input cadence, keyboard behavior and team ownership are defined in [input-pipeline.md](input-pipeline.md). Sam owns the definitions of the two demo workflows; do not expand their scope while wiring the routers.
+
 ## Source retrieval
 
 Use the active browser or Accessibility context to identify the current thread. A Gmail adapter should retrieve every relevant message and decode plain-text bodies, retaining message IDs and timestamps. `extract_thread` currently decodes one supplied RFC 822 message; it does not infer dates, retrieve a Gmail conversation, parse HTML or resolve relative dates.
@@ -24,7 +26,7 @@ On a reply, match the selected option with its original evidence. Show a confirm
 
 The application owns allowed operations. Jev selects a workflow ID or an operation/target from current observations. A generative model supplies text. Dates, money and target freshness are checked in code. Retrieved email and page text are evidence, not instructions that can redefine the workflow.
 
-Use one executor for the first supported booking site: Jev Ultrafast or Skyvern. Both are pinned for evaluation; neither is wired into the starter. The executor must reobserve after navigation and handle frames/new tabs where checkout requires them. Stop before submitting payment. A prompt saying "stop" alone is not an execution guard.
+Use Skyvern for browser execution and the selected Computer Use Jev pipeline for native Mac actions. Neither is wired into the starter. Do not keep a second browser executor. The browser adapter must reobserve after navigation and handle frames/new tabs where checkout requires them. Stop before submitting payment. A prompt saying "stop" alone is not an execution guard.
 
 Revise should bind its preview to the original app, window, element, selection and text. Revalidate those immediately before insertion. Adopt KeyType packages selectively and verify native undo in the supported app.
 

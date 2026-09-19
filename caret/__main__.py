@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .planner import plan
 from .screenpipe import last_n_minutes, last_n_windows
+from .skills import create_skill, filter_skills, list_skills
 from .store import Store
 
 
@@ -13,6 +14,17 @@ def main() -> int:
     parser.add_argument("--db", type=Path, default=Path(".local/caret.sqlite"))
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("workflows")
+    skills = commands.add_parser("skills")
+    skills_sub = skills.add_subparsers(dest="skills_command", required=True)
+    skills_list = skills_sub.add_parser("list")
+    skills_list.add_argument("--action", required=True)
+    skills_filter = skills_sub.add_parser("filter")
+    skills_filter.add_argument("--action", required=True)
+    skills_filter.add_argument("--query", default="")
+    skills_create = skills_sub.add_parser("create")
+    skills_create.add_argument("--action", required=True)
+    skills_create.add_argument("--name", required=True)
+    skills_create.add_argument("--description", default="")
     preview = commands.add_parser("preview")
     preview.add_argument("--fixture", type=Path, required=True)
     hold = commands.add_parser("hold")
@@ -43,6 +55,15 @@ def main() -> int:
             return 1
     if args.command == "workflows":
         print(Path(__file__).with_name("workflows.json").read_text())
+        return 0
+    if args.command == "skills":
+        if args.skills_command == "list":
+            payload = list_skills(args.action)
+        elif args.skills_command == "filter":
+            payload = filter_skills(args.action, args.query)
+        else:
+            payload = create_skill(args.action, args.name, description=args.description)
+        print(json.dumps(payload, indent=2))
         return 0
     store = Store(args.db)
     try:

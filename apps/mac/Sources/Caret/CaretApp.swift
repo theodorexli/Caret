@@ -18,10 +18,19 @@ final class Model: ObservableObject {
     @Published var selectedText = ""
     @Published var sourceApp: String?
     @Published private(set) var pinStore: PinnedActionsStore
+    @Published var panelQuery = ""
+    @Published var scopedActionID: String?
+    @Published private(set) var skillsVersion = 0
+    @Published private(set) var customActions: [CaretAction] = []
+    @Published var showingSettings = false
 
     var memories: [MemoryItem] = []
     var onRun: ((CaretAction) -> Void)?
     var onPinsChanged: (() -> Void)?
+    var onOpenAccessibility: (() -> Void)?
+    var onReconnectAccessibility: (() -> Void)?
+
+    let skillRepository = SkillRepository()
 
     let actions: [CaretAction] = [
         CaretAction(id: "book-flight", title: "Book flight"),
@@ -36,10 +45,28 @@ final class Model: ObservableObject {
 
     init(pinStore: PinnedActionsStore = .load()) {
         self.pinStore = pinStore
+        reloadCustomActions()
+    }
+
+    var allActions: [CaretAction] {
+        let builtInIDs = Set(actions.map(\.id))
+        let extras = customActions.filter { !builtInIDs.contains($0.id) }
+        return actions + extras
+    }
+
+    var trimmedPanelQuery: String {
+        panelQuery.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func action(id: String) -> CaretAction? {
-        actions.first { $0.id == id }
+        allActions.first { $0.id == id }
+    }
+
+    func reloadCustomActions() {
+        let builtIn = Set(actions.map(\.id))
+        customActions = skillRepository.listActionIDs()
+            .filter { !builtIn.contains($0) }
+            .map { CaretAction(id: $0, title: SkillRepository.displayTitle(actionID: $0)) }
     }
 
     var pinnedActions: [CaretAction] {
@@ -71,10 +98,117 @@ final class Model: ObservableObject {
         }
     }
 
-    func run(_ action: CaretAction) {
+    func preparePanel(scopedActionID: String?) {
+        reloadCustomActions()
+        showingSettings = false
+        self.scopedActionID = scopedActionID
+        panelQuery = ""
+    }
+
+    func clearPanelScope() {
+        scopedActionID = nil
+        showingSettings = false
+        panelQuery = ""
+    }
+
+    func openSettings() {
+        scopedActionID = nil
+        showingSettings = true
+    }
+
+    var settingsMatchesSearch: Bool {
+        let query = trimmedPanelQuery.lowercased()
+        guard !query.isEmpty else { return false }
+        return "settings".contains(query) || query.contains("setting")
+    }
+
+    var accessibilityConnected: Bool {
+        AXHelpers.isTrusted()
+    }
+
+    var scopedAction: CaretAction? {
+        guard let scopedActionID else { return nil }
+        return action(id: scopedActionID)
+    }
+
+    var filteredActions: [CaretAction] {
+        let needle = trimmedPanelQuery.lowercased()
+        guard !needle.isEmpty else { return allActions }
+        return allActions.filter { $0.title.lowercased().contains(needle) || $0.id.lowercased().contains(needle) }
+    }
+
+    var filteredSkills: [CaretSkill] {
+        guard let scopedActionID else { return [] }
+        return skillRepository.filter(actionID: scopedActionID, query: panelQuery)
+    }
+
+    var canCreateSkill: Bool {
+        guard let scopedActionID else { return false }
+        let query = trimmedPanelQuery
+        guard !query.isEmpty else { return false }
+        let existing = skillRepository.filter(actionID: scopedActionID, query: query)
+        return !existing.contains { $0.name.compare(query, options: .caseInsensitive) == .orderedSame }
+    }
+
+    var showCreateRow: Bool {
+        let query = trimmedPanelQuery
+        guard !query.isEmpty else { return false }
+        if scopedActionID != nil {
+            return canCreateSkill
+        }
+        let exactAction = allActions.contains { $0.title.compare(query, options: .caseInsensitive) == .orderedSame }
+        return !exactAction
+    }
+
+    var createRowTitle: String {
+        "Create \"\(trimmedPanelQuery)\""
+    }
+
+    var createRowSubtitle: String {
+        if scopedActionID != nil {
+            return "New skill for this action"
+        }
+        if filteredActions.isEmpty {
+            return "New action and skill"
+        }
+        return "New action when nothing matches"
+    }
+
+    func selectActionForSkills(_ action: CaretAction) {
+        scopedActionID = action.id
+        panelQuery = ""
+    }
+
+    func submitCreateFromQuery() {
+        let name = trimmedPanelQuery
+        guard !name.isEmpty else { return }
+
+        if let scopedActionID {
+            do {
+                _ = try skillRepository.create(actionID: scopedActionID, name: name)
+                skillsVersion += 1
+            } catch {
+                NSLog("[Caret] create skill failed: %@", String(describing: error))
+            }
+            return
+        }
+
+        let actionID = SkillRepository.slugify(name)
+        do {
+            _ = try skillRepository.create(actionID: actionID, name: name)
+            reloadCustomActions()
+            self.scopedActionID = actionID
+            skillsVersion += 1
+        } catch {
+            NSLog("[Caret] create action failed: %@", String(describing: error))
+        }
+    }
+
+    func run(_ action: CaretAction, skill: CaretSkill? = nil) {
         NSLog(
-            "[Caret] action=%@ memories=%d selection=%@ app=%@",
+            "[Caret] action=%@ skill=%@ memories=%d selection=%@ app=%@",
             action.id,
+            skill?.id ?? "-",
             memories.count,
             selectedText.replacingOccurrences(of: "\n", with: " "),
             sourceApp ?? "-"
@@ -82,43 +216,222 @@ final class Model: ObservableObject {
         onRun?(action)
     }
 
+    func run(skill: CaretSkill) {
+        guard let action = action(id: skill.actionID) else { return }
+        run(action, skill: skill)
+    }
+
     func runPinnedSlot(_ slot: Int) {
         guard let id = pinStore.actionID(forSlot: slot), let action = action(id: id) else { return }
-        run(action)
+        let skills = skillRepository.list(actionID: id)
+        if let first = skills.first {
+            run(action, skill: first)
+        } else {
+            run(action)
+        }
     }
 }
 
 enum ActionsMenuMetrics {
     static let rowHeight: CGFloat = 24
     static let maxVisibleRows: CGFloat = 8
-    static let width: CGFloat = 260
+    static let width: CGFloat = 272
 
     static var maxScrollHeight: CGFloat {
         rowHeight * maxVisibleRows + 8
     }
 }
 
-struct ActionsView: View {
+struct SkillPickerView: View {
+    @ObservedObject var model: Model
+    @FocusState private var searchFocused: Bool
+
+    private var searchPlaceholder: String {
+        if model.scopedAction != nil {
+            return "Filter skills or create one"
+        }
+        return "Search actions or create"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
+                if model.showingSettings {
+                    Button {
+                        model.showingSettings = false
+                        searchFocused = true
+                    } label: {
+                        Label("Settings", systemImage: "chevron.left")
+                            .labelStyle(.titleAndIcon)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                } else if let action = model.scopedAction {
+                    Button {
+                        model.clearPanelScope()
+                        searchFocused = true
+                    } label: {
+                        Label(action.title, systemImage: "chevron.left")
+                            .labelStyle(.titleAndIcon)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                PanelSearchField(
+                    text: $model.panelQuery,
+                    placeholder: searchPlaceholder,
+                    isFocused: $searchFocused,
+                    showsSettingsButton: !model.showingSettings,
+                    onSettings: { model.openSettings() }
+                )
+                .onSubmit {
+                    if model.settingsMatchesSearch, !model.showingSettings {
+                        model.openSettings()
+                    } else if model.showCreateRow {
+                        model.submitCreateFromQuery()
+                    }
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+
+            Divider().opacity(0.35)
+
+            ScrollView(.vertical, showsIndicators: true) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    if model.showingSettings {
+                        SettingsPanelView(model: model)
+                    } else if model.scopedAction == nil {
+                        if model.settingsMatchesSearch {
+                            SkillRow(title: "Settings", subtitle: "Accessibility and Caret", accent: false) {
+                                model.openSettings()
+                            }
+                        }
+                        if model.filteredActions.isEmpty, !model.trimmedPanelQuery.isEmpty, !model.settingsMatchesSearch {
+                            EmptyResultsHint(text: "No matching actions")
+                        }
+                        ForEach(model.filteredActions) { action in
+                            ActionRow(
+                                title: action.title,
+                                shortcut: model.shortcutLabel(for: action),
+                                isPinned: model.pinStore.isPinned(action.id),
+                                canPin: model.canPin(action),
+                                onPin: { model.togglePin(action) },
+                                onSelect: { model.selectActionForSkills(action) }
+                            )
+                        }
+                        if model.showCreateRow {
+                            CreateRow(model: model)
+                        }
+                    } else {
+                        let _ = model.skillsVersion
+                        if model.filteredSkills.isEmpty, !model.trimmedPanelQuery.isEmpty {
+                            EmptyResultsHint(text: "No matching skills")
+                        }
+                        ForEach(model.filteredSkills) { skill in
+                            SkillRow(title: skill.name, subtitle: skill.description) {
+                                model.run(skill: skill)
+                            }
+                        }
+                        if model.showCreateRow {
+                            CreateRow(model: model)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .frame(maxHeight: ActionsMenuMetrics.maxScrollHeight)
+        }
+        .frame(width: ActionsMenuMetrics.width)
+        .onAppear {
+            searchFocused = true
+        }
+        .onChange(of: model.scopedActionID) { _, _ in
+            searchFocused = true
+        }
+    }
+}
+
+private struct PanelSearchField: View {
+    @Binding var text: String
+    let placeholder: String
+    @FocusState.Binding var isFocused: Bool
+    var showsSettingsButton: Bool = true
+    var onSettings: (() -> Void)?
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.tertiary)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .focused($isFocused)
+            if showsSettingsButton, let onSettings {
+                Button(action: onSettings) {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Settings")
+            }
+        }
+        .padding(.leading, 8)
+        .padding(.trailing, 4)
+        .padding(.vertical, 5)
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+}
+
+private struct SettingsPanelView: View {
     @ObservedObject var model: Model
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: true) {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(model.actions) { action in
-                    ActionRow(
-                        title: action.title,
-                        shortcut: model.shortcutLabel(for: action),
-                        isPinned: model.pinStore.isPinned(action.id),
-                        canPin: model.canPin(action),
-                        onPin: { model.togglePin(action) },
-                        onRun: { model.run(action) }
-                    )
-                }
-            }
-            .padding(.vertical, 4)
+        SkillRow(
+            title: model.accessibilityConnected ? "Accessibility: connected" : "Accessibility: not connected",
+            subtitle: "Open System Settings"
+        ) {
+            model.onOpenAccessibility?()
         }
-        .frame(width: ActionsMenuMetrics.width)
-        .frame(maxHeight: ActionsMenuMetrics.maxScrollHeight)
+        SkillRow(title: "Reconnect Accessibility", subtitle: "After reinstalling Caret") {
+            model.onReconnectAccessibility?()
+        }
+    }
+}
+
+private struct EmptyResultsHint: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 12))
+            .foregroundStyle(.tertiary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct CreateRow: View {
+    @ObservedObject var model: Model
+
+    var body: some View {
+        SkillRow(
+            title: model.createRowTitle,
+            subtitle: model.createRowSubtitle,
+            accent: true
+        ) {
+            model.submitCreateFromQuery()
+        }
     }
 }
 
@@ -128,12 +441,12 @@ private struct ActionRow: View {
     let isPinned: Bool
     let canPin: Bool
     let onPin: () -> Void
-    let onRun: () -> Void
+    let onSelect: () -> Void
     @State private var isHovered = false
 
     var body: some View {
         HStack(spacing: 6) {
-            Button(action: onRun) {
+            Button(action: onSelect) {
                 HStack(spacing: 8) {
                     Text(title)
                         .font(.system(size: 13))
@@ -154,24 +467,74 @@ private struct ActionRow: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: onPin) {
-                Image(systemName: isPinned ? "pin.fill" : "pin")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(isPinned ? Color.accentColor : .secondary)
-                    .frame(width: 22, height: 22)
-                    .contentShape(Rectangle())
+            if isPinned || canPin {
+                Button(action: onPin) {
+                    Image(systemName: isPinned ? "pin.fill" : "pin")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(isPinned ? Color.accentColor : .secondary)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(isPinned ? "Unpin" : "Pin next to Caret icon")
+                .padding(.trailing, 6)
             }
-            .buttonStyle(.plain)
-            .disabled(!canPin && !isPinned)
-            .help(isPinned ? "Unpin" : (canPin ? "Pin next to Caret icon" : "Unpin one action first (max 3)"))
-            .padding(.trailing, 6)
         }
+        .padding(.trailing, isPinned || canPin ? 0 : 6)
         .frame(height: ActionsMenuMetrics.rowHeight)
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 6)
         .background {
             if isHovered {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(Color.primary.opacity(0.1))
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.primary.opacity(0.08))
+            }
+        }
+        .onHover { isHovered = $0 }
+    }
+}
+
+private struct SkillRow: View {
+    let title: String
+    let subtitle: String
+    var accent: Bool = false
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if accent {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.accentColor)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.system(size: 13, weight: accent ? .medium : .regular))
+                        .foregroundStyle(accent ? Color.accentColor : .primary)
+                        .lineLimit(1)
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, accent ? 10 : 12)
+            .padding(.trailing, 10)
+            .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .frame(height: subtitle.isEmpty ? ActionsMenuMetrics.rowHeight : ActionsMenuMetrics.rowHeight + 8)
+        .padding(.horizontal, 6)
+        .background {
+            if isHovered {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.primary.opacity(accent ? 0.12 : 0.08))
             }
         }
         .onHover { isHovered = $0 }
@@ -212,12 +575,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastTarget: SelectionTarget?
     private var clickMonitor: Any?
     private var escapeMonitor: Any?
+    private let chordState = ModifierChordState()
     private let hotKey = HotKeyManager()
-    private let trigger = TriggerButtonController()
+    private var trigger: TriggerButtonController!
     private let monitor = SelectionMonitor()
     private let statusBar = StatusBarController()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        trigger = TriggerButtonController(chordState: chordState)
         let model = Model()
         self.model = model
 
@@ -240,7 +605,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onPinsChanged = { [weak self] in
             self?.syncPinnedTriggerUI()
         }
-        let hosting = NSHostingView(rootView: ActionsView(model: model).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous)))
+        model.onOpenAccessibility = {
+            AXHelpers.openAccessibilitySettings()
+        }
+        model.onReconnectAccessibility = { [weak self] in
+            self?.showPermissionWindow()
+        }
+        let hosting = NSHostingView(
+            rootView: SkillPickerView(model: model)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
+                }
+        )
         hosting.sizingOptions = [.intrinsicContentSize]
         panel.contentView = hosting
         self.panel = panel
@@ -263,15 +641,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.runPinnedAction(slot: slot)
             }
         }
+        hotKey.onCommandOptionHeld = { [weak self] held in
+            Task { @MainActor in
+                self?.chordState.setCommandOptionHeld(held)
+            }
+        }
         hotKey.register()
 
         trigger.onClick = { [weak self] in
             guard let self else { return }
-            self.togglePanel(at: CGPoint(x: self.trigger.buttonFrame.maxX, y: self.trigger.buttonFrame.midY))
+            self.showPanel(
+                at: CGPoint(x: self.trigger.buttonFrame.maxX, y: self.trigger.buttonFrame.midY),
+                scopedActionID: nil
+            )
         }
         trigger.onPinnedAction = { [weak self] chip in
             Task { @MainActor in
-                self?.runPinnedAction(id: chip.id)
+                guard let self else { return }
+                self.showPanel(
+                    at: CGPoint(x: self.trigger.buttonFrame.maxX, y: self.trigger.buttonFrame.midY),
+                    scopedActionID: chip.id
+                )
             }
         }
 
@@ -306,20 +696,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.runPinnedSlot(slot)
     }
 
-    private func runPinnedAction(id: String) {
-        guard let model, let action = model.action(id: id) else { return }
-        model.run(action)
-    }
-
     func togglePanel(at point: CGPoint) {
         if panel?.isVisible == true {
             hidePanel()
         } else {
-            showPanel(at: point)
+            showPanel(at: point, scopedActionID: nil)
         }
     }
 
-    private func showPanel(at point: CGPoint) {
+    private func showPanel(at point: CGPoint, scopedActionID: String?) {
+        model?.preparePanel(scopedActionID: scopedActionID)
         trigger.hide()
         panel?.present(at: point)
         installClickOutside()
@@ -328,6 +714,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func hidePanel() {
         panel?.orderOut(nil)
         removeClickOutside()
+        model?.clearPanelScope()
         trigger.update(target: lastTarget)
     }
 

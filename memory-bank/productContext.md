@@ -1,12 +1,12 @@
 # Product Context
 
-Caret is a Mac assistant meant to take the current email thread and calendar, propose a next action with visible evidence, and carry that action out. This repository is a **contributor starter** for a hackathon demo, not the finished product. What the assistant becomes after the demo is unspecified.
+Caret is a native Mac assistant with an always-available Jev judge. App state, clipboard context, Screenpipe history and current computer observations feed one decision service. It chooses abstention, an inline text offer or an action, then selects a workflow when needed. The shared contract is [docs/input-pipeline.md](../docs/input-pipeline.md). This repository is a **contributor starter**, not the finished demo.
 
 ## Target Audience
 
-The intended user is a person on a Mac who is coordinating a meeting from an email thread and needs a few travel-aware times they can send.
+The intended user works in existing Mac apps and wants text assistance or actions without assembling context in a separate chat. Meeting coordination is one demo use case, not the entire product.
 
-The people using this repository today are hackathon teammates wiring sources into the starter. Whether Caret is for a broader audience after the event is unspecified.
+Teddy owns the app and UX, the context teammate owns Screenpipe, and Sam owns the choice and definitions of the two demo workflows. Other agents connect the shared judge and workflow contracts without replacing those owners' work.
 
 ## Use Cases
 
@@ -17,7 +17,7 @@ These are the three seeded workflows. Only the calendar-link preview currently r
 - **Book a flight.** Navigate a booking site from the chosen option and stop before payment. This seed exists; it does not execute yet.
 - **Revise selected text.** Change text in place in the original app after rechecking that the selection is still the same. This seed exists; it does not execute yet.
 
-The current starter lets a teammate open a **synthetic** Dallas meeting, inspect the calculated options and evidence, save local holds, and confirm one of them. It does not read a live thread, send mail, write a real calendar, or drive a browser.
+The CLI supports a **synthetic** Dallas meeting, calculated options and local hold transitions. At app commit `827a387`, Teddy's UI shows a cursor-adjacent trigger, pinned actions and a scrollable action list; its callback logs and closes the panel. It is not connected to the CLI. Live thread retrieval, sending, calendar writes and computer execution remain unconnected.
 
 ## Key Benefits
 
@@ -44,6 +44,6 @@ The starter today only proves local preview math and local hold transitions on s
 
 - Supported scope ends before payment. Do not add purchases, hotel search, or multi-party polling.
 - Fixture content is synthetic and cannot be sent. A draft is created only from supported, sourced options.
-- The app does not monitor the computer in this starter. Background capture is not connected.
+- The app currently observes focused fields and selections through Accessibility to position its trigger. Screenpipe history capture is not connected at the reviewed revision.
 - Live credentials and personal threads stay out of Git. Source integrations need explicit configuration.
 - External sending, calendar writes, Jev routing, and browser execution are **not connected**. Connecting them is future work, not an implied current capability.

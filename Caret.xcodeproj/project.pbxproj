@@ -16,6 +16,8 @@
 		B10000000000000000000027 /* TriggerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* TriggerButton.swift */; };
 		B1000000000000000000002B /* AccessibilityTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001C /* AccessibilityTrust.swift */; };
 		B1000000000000000000002C /* PinnedActionsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* PinnedActionsStore.swift */; };
+		B1000000000000000000003A /* SkillRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* SkillRepository.swift */; };
+		B1000000000000000000003B /* ModifierChordState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000003C /* ModifierChordState.swift */; };
 		B1000000000000000000002D /* PinnedActionsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* PinnedActionsStore.swift */; };
 		B1000000000000000000002E /* PinnedActionsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* PinnedActionsStoreTests.swift */; };
 		B10000000000000000000028 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* Assets.xcassets */; };
@@ -43,6 +45,8 @@
 		B10000000000000000000017 /* TriggerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TriggerButton.swift; sourceTree = "<group>"; };
 		B1000000000000000000001C /* AccessibilityTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityTrust.swift; sourceTree = "<group>"; };
 		B1000000000000000000001D /* PinnedActionsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedActionsStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000020 /* SkillRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillRepository.swift; sourceTree = "<group>"; };
+		B1000000000000000000003C /* ModifierChordState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierChordState.swift; sourceTree = "<group>"; };
 		B1000000000000000000001E /* PinnedActionsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedActionsStoreTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001F /* CaretTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CaretTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -102,6 +106,8 @@
 				B10000000000000000000017 /* TriggerButton.swift */,
 				B1000000000000000000001C /* AccessibilityTrust.swift */,
 				B1000000000000000000001D /* PinnedActionsStore.swift */,
+				B10000000000000000000020 /* SkillRepository.swift */,
+				B1000000000000000000003C /* ModifierChordState.swift */,
 				B10000000000000000000018 /* Assets.xcassets */,
 			);
 			name = Caret;
@@ -252,6 +258,8 @@
 				B10000000000000000000027 /* TriggerButton.swift in Sources */,
 				B1000000000000000000002B /* AccessibilityTrust.swift in Sources */,
 				B1000000000000000000002C /* PinnedActionsStore.swift in Sources */,
+				B1000000000000000000003A /* SkillRepository.swift in Sources */,
+				B1000000000000000000003B /* ModifierChordState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

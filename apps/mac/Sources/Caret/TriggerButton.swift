@@ -24,8 +24,10 @@ final class TriggerButtonController {
     private let panel = TriggerButtonPanel()
     private var lastRect: CGRect = .zero
     private var pinnedActions: [PinnedActionChip] = []
+    private weak var chordState: ModifierChordState?
 
-    init() {
+    init(chordState: ModifierChordState) {
+        self.chordState = chordState
         panel.contentView = makeHostingView()
         panel.setContentSize(CaretPillMetrics.sparkleSize)
     }
@@ -49,6 +51,7 @@ final class TriggerButtonController {
         let hosting = NSHostingView(
             rootView: TriggerClusterView(
                 pinnedActions: pinnedActions,
+                chordState: chordState!,
                 onPinnedTap: { [weak self] chip in
                     self?.onPinnedAction?(chip)
                 },
@@ -121,6 +124,7 @@ final class TriggerButtonPanel: NSPanel {
 
 struct TriggerClusterView: View {
     let pinnedActions: [PinnedActionChip]
+    @ObservedObject var chordState: ModifierChordState
     let onPinnedTap: (PinnedActionChip) -> Void
     let onSparkleTap: () -> Void
 
@@ -128,7 +132,7 @@ struct TriggerClusterView: View {
         HStack(alignment: .center, spacing: CaretPillMetrics.clusterSpacing) {
             TriggerButtonView(onClick: onSparkleTap)
             if !pinnedActions.isEmpty {
-                PinnedGlassStrip(actions: pinnedActions, onTap: onPinnedTap)
+                PinnedGlassStrip(actions: pinnedActions, chordState: chordState, onTap: onPinnedTap)
             }
         }
         .frame(height: CaretPillMetrics.clusterHeight)
@@ -137,6 +141,7 @@ struct TriggerClusterView: View {
 
 private struct PinnedGlassStrip: View {
     let actions: [PinnedActionChip]
+    @ObservedObject var chordState: ModifierChordState
     let onTap: (PinnedActionChip) -> Void
 
     var body: some View {
@@ -149,6 +154,7 @@ private struct PinnedGlassStrip: View {
                 }
                 PinnedStripCell(
                     chip: chip,
+                    showShortcut: chordState.commandOptionHeld,
                     isFirst: index == 0,
                     isLast: index == actions.count - 1
                 ) {
@@ -163,6 +169,7 @@ private struct PinnedGlassStrip: View {
 
 private struct PinnedStripCell: View {
     let chip: PinnedActionChip
+    let showShortcut: Bool
     let isFirst: Bool
     let isLast: Bool
     let action: () -> Void
@@ -180,13 +187,14 @@ private struct PinnedStripCell: View {
 
     var body: some View {
         Button(action: action) {
-            Text(chip.title)
-                .font(.system(size: 10, weight: .medium))
+            Text(showShortcut ? PinnedShortcutFormatting.menuLabel(slot: chip.slot) : chip.title)
+                .font(.system(size: showShortcut ? 11 : 10, weight: .medium, design: showShortcut ? .monospaced : .default))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .foregroundStyle(.primary)
-                .frame(maxWidth: CaretPillMetrics.pinLabelMaxWidth)
-                .padding(.horizontal, 8)
+                .frame(maxWidth: showShortcut ? 44 : CaretPillMetrics.pinLabelMaxWidth)
+                .padding(.horizontal, showShortcut ? 6 : 8)
+                .animation(.easeOut(duration: 0.12), value: showShortcut)
                 .frame(maxHeight: .infinity)
                 .background {
                     if isHovered {

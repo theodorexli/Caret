@@ -36,7 +36,13 @@ When the task needs project, architecture, or stack context, read the relevant p
 
 # Caret contributor instructions
 
-- Start with README.md, docs/integrations.md, and `memory-bank/` when you need project, architecture, or stack context. Keep the native Swift + Python + SQLite starter simple.
+- Start with README.md and docs/input-pipeline.md for the selected stack, two-stage Jev routing, keyboard contract and ownership. Read docs/integrations.md for workflow effects, and `memory-bank/` for current implementation status.
+- Keep exactly the five selected upstreams: KeyType, GhostType, Computer Use Jev, Skyvern and Screenpipe. Skyvern owns browser control; Computer Use Jev owns native actions; Screenpipe is the sole history engine.
+- Merge KeyType/GhostType components into one Caret app with one input/acceptance owner. GhostType mode means Teddy's action hoverable, not a second running autocomplete app.
+- One shared Jev judge chooses ABSTAIN/INLINE/ACTION at most once per two seconds of changed active context, then selects a workflow/task only for ACTION. A fast Groq-hosted model generates inline text. Discard stale results; never execute from ambient classification alone.
+- Tab accepts only the current visible offer that owns it; Command–1/2/3 choose visible actions. Otherwise preserve the host app's shortcuts. Revalidate the original target before applying any edit.
+- Teddy owns UI and Accessibility onboarding; the context teammate owns Screenpipe; Sam owns the two demo workflow definitions. Coordinate through docs/input-pipeline.md before editing another owner's implementation.
+- Paul owns `jev-scheduler/`, proposed in PR #1. Adapt its actual interface when pushed; do not duplicate his implementation or confuse him with the author of the native Computer Use Jev upstream.
 - The supported hackathon scope ends before payment. Do not add purchases, hotel search or multi-party polling.
 - Fixture content is synthetic and cannot be sent. Drop failed-source options; never invent facts in a draft.
 - Keep external credentials and personal data out of Git. Source integrations need explicit configuration.

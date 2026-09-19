@@ -1,14 +1,37 @@
 [
-  {"path":"packages/keytype","url":"https://github.com/johnbean393/KeyType.git","commit":"21df2cc1f5271d3712d567e3c2491ac09174caf3","license":"MIT","role":"Native capture, text insertion and overlay reference"},
-  {"path":"packages/ghosttype","url":"https://github.com/mk668a/GhostType.git","commit":"af6cff8751dc020ac3a2ff93f220e887a6e1b787","license":"MIT","role":"Alternative native autocomplete reference"},
-  {"path":"packages/jev-ultrafast","url":"https://github.com/browser-use/jev-ultrafast.git","commit":"1231850a0bf1a0c0341fe408ef1668dbbfdfac46","license":"MIT","role":"Primary Jev browser executor candidate"},
-  {"path":"packages/typesafe-computer-use","url":"https://github.com/awlevin/typesafe-computer-use.git","commit":"cc7b5066ae1a07b5e3182e8f87a9b5b6dfdcffc1","license":"MIT","role":"Native OCR and classifier action reference"},
-  {"path":"packages/computer-use-jev","url":"https://github.com/paulsmith/computer-use-jev.git","commit":"ff0ad8ba8e25755d37fb8d93718144c4568a596b","license":"MIT","role":"Native Accessibility and typed Jev action reference"},
-  {"path":"packages/skyvern","url":"https://github.com/Skyvern-AI/skyvern.git","commit":"32618406e87ddfc2e05315c0706a2bf1e7955cbe","license":"AGPL-3.0","role":"Alternative browser workflow executor candidate"},
-  {"path":"packages/browser-harness","url":"https://github.com/browser-use/browser-harness.git","commit":"afbcc381b963040c19627d788e40c7e7663171ee","license":"MIT","role":"CDP browser driver reference"},
-  {"path":"packages/screenpipe","url":"https://github.com/screenpipe/screenpipe.git","commit":"892199f742e46d0c5d9e8c06687b35ca7c2b6547","license":"MIT except ee/","role":"Historical permissive capture-engine reference; do not advance across license change"},
-  {"path":"packages/activitywatch","url":"https://github.com/ActivityWatch/activitywatch.git","commit":"5ded21883526e41b0e6567ed3e1aab2870d0f6b8","license":"MPL-2.0","role":"Active-window and idle-signal reference"},
-  {"path":"packages/openrecall","url":"https://github.com/openrecall/openrecall.git","commit":"62303e09bfd2491907e788ac5cbbdc21e73bd323","license":"AGPL-3.0","role":"Screenshot and OCR history reference"},
-  {"path":"packages/backscroll","url":"https://github.com/AnthonyDavidAdams/backscroll.git","commit":"076f98e32e331a0c82f74498ded90662d0aef951","license":"MIT","role":"Small OCR and SQLite history reference"},
-  {"path":"packages/retrace","url":"https://github.com/jhammant/retrace.git","commit":"0b8d9e739e006a3cf67e8a2488be71cc2fb70f5c","license":"Apache-2.0","role":"Mac capture and retrieval reference"}
+  {
+    "path": "packages/keytype",
+    "url": "https://github.com/johnbean393/KeyType.git",
+    "commit": "21df2cc1f5271d3712d567e3c2491ac09174caf3",
+    "license": "MIT",
+    "role": "Native inline autocomplete, caret geometry and insertion components"
+  },
+  {
+    "path": "packages/ghosttype",
+    "url": "https://github.com/mk668a/GhostType.git",
+    "commit": "af6cff8751dc020ac3a2ff93f220e887a6e1b787",
+    "license": "MIT",
+    "role": "Text interaction components merged into Caret; action mode uses Teddy hoverable"
+  },
+  {
+    "path": "packages/computer-use-jev",
+    "url": "https://github.com/paulsmith/computer-use-jev.git",
+    "commit": "ff0ad8ba8e25755d37fb8d93718144c4568a596b",
+    "license": "MIT",
+    "role": "Selected Jev native Mac action pipeline with persistent Swift AX worker"
+  },
+  {
+    "path": "packages/skyvern",
+    "url": "https://github.com/Skyvern-AI/skyvern.git",
+    "commit": "32618406e87ddfc2e05315c0706a2bf1e7955cbe",
+    "license": "AGPL-3.0",
+    "role": "Selected browser execution engine"
+  },
+  {
+    "path": "packages/screenpipe",
+    "url": "https://github.com/screenpipe/screenpipe.git",
+    "commit": "892199f742e46d0c5d9e8c06687b35ca7c2b6547",
+    "license": "MIT except ee/",
+    "role": "Sole history/context engine; owned by context teammate; retain historical license pin"
+  }
 ]

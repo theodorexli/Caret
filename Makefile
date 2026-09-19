@@ -20,4 +20,4 @@ check: test
 	swift build --package-path apps/mac
 
 sources:
-	git submodule update --init --depth 1 packages/keytype packages/jev-ultrafast
+	git submodule update --init --depth 1 packages/keytype packages/ghosttype packages/computer-use-jev

@@ -1,10 +1,10 @@
 # Caret
 
-A Mac assistant that uses the current thread and calendar to propose an action, show its evidence, and carry it out. Jev chooses workflows and computer actions; ordinary code checks times, tracks effects and verifies results.
+A native Mac assistant with two interaction modes: inline completion accepted with Tab, and a nearby action hoverable. Jev chooses whether to abstain, offer a small text edit or propose an action; a second query selects the workflow or computer task. A fast Groq-hosted model generates inline text. This is the target behavior, with integration still in progress.
 
 ## Start here
 
-The starter needs Python 3.11+ and, for the Mac app, macOS 14+ with Swift 5.9+ from Xcode or the Command Line Tools. The local core has no third-party Python dependencies. Upstream integrations have their own requirements.
+The starter needs Python 3.11+ and macOS 14+. `make app` requires full Xcode; SwiftPM checks can use the Command Line Tools. The local core has no third-party Python dependencies. The selected native executor uses Go 1.26 and a Swift worker when integrated; upstream services have separate setup requirements.
 
 ```sh
 git clone https://github.com/theodorexli/hackathon-2026-09-19.git
@@ -15,37 +15,37 @@ make install    # Release Caret.app → /Applications
 # make dmg      # also writes dist/Caret.dmg
 ```
 
-Caret asks for Accessibility on first launch, then shows a blue asterisk button only next to text fields and text selections. Command–Option or the button opens a list of actions. Memories stay in the background and are used when an action runs.
+The current app asks for Accessibility, then shows a blue asterisk beside supported fields and selections. Command–Option or the button opens the scrollable action list; up to three pinned actions use Command–Option–1/2/3. These actions currently log and close the panel. Inline completion, Tab acceptance, Command–1/2/3 and model routing are planned, not wired. The [input pipeline contract](docs/input-pipeline.md) defines the next implementation and the owners.
 
-**This is a contributor starter, not the finished ninety-second demo.** The sample thread, busy intervals and buffers are explicitly synthetic. Preview calculation and SQLite hold transitions run for real. Gmail, Google Calendar, Jev inference, background capture and browser execution are not connected. The app cannot send email, create external events or purchase anything. Accessibility is used only to place the Caret button beside the current field or selection.
+**This is a contributor starter, not the finished ninety-second demo.** `make demo` runs the Python preview and local SQLite state on explicitly synthetic data. Teddy's current action UI is not connected to that CLI. Gmail, Google Calendar, Jev inference, Screenpipe and computer execution are not connected. Accessibility currently locates fields and selections; the app cannot send email, create external events or purchase anything.
 
 ## Where to work
 
 | Component | Location | First integration |
 | --- | --- | --- |
-| Mac popup and evidence pane | `Caret.xcodeproj`, `apps/mac` | Capture current selection/thread beside the cursor, preserve host focus, accept natural input |
+| Mac input UI | `Caret.xcodeproj`, `apps/mac` | Teddy: inline text, action hoverable, scoped shortcuts and permission polish |
 | Workflows | `caret/workflows.json`, `caret/planner.py` | Connect Jev routing and source-backed parameter extraction |
-| Memory and run state | `caret/store.py` | Add source timestamps/IDs and external calendar event IDs |
-| Computer use | `packages/jev-ultrafast`, `packages/skyvern` | Choose one browser executor and stop before payment |
+| History and run state | `packages/screenpipe`, `caret/store.py` | Context owner: Screenpipe retrieval; workflow owner: external effect IDs |
+| Computer use | `packages/computer-use-jev`, `packages/skyvern` | Native AX execution and browser execution, respectively; stop before payment |
 | Gmail and calendar | `docs/integrations.md` | Implement the documented source and action contracts |
 
-The Mac app invokes the Python CLI with argument arrays, receiving JSON. There is no server, container or web frontend in the default run. SQLite data stays in ignored `.local/` files. `python3 -m caret workflows` lists the seeds. `python3 -m caret --help` lists local operations.
+The Python CLI exposes JSON preview/hold/confirm operations for the UI bridge to reconnect. There is no server, container or web frontend in the default run. SQLite data stays in ignored `.local/` files. `python3 -m caret workflows` lists the seeds. Sam owns the choice and definitions of the two demo workflows.
 
 ## Public repositories
 
-All referenced implementation repositories are pinned submodules under `packages/`. They keep their upstream names and licenses; Caret is the surrounding application. Pins and roles live in [sources.json](sources.json).
+Five selected repositories are pinned under `packages/`: KeyType and GhostType for one combined text interaction, Computer Use Jev for native actions, Skyvern for browser control and Screenpipe for history. Pins and roles live in [sources.json](sources.json). Alternative engines were removed so agents have one clear implementation path.
 
 Fetch only what you need:
 
 ```sh
-make sources   # KeyType and Jev browser code
+make sources   # KeyType, GhostType and the selected native Jev pipeline
 git submodule update --init --depth 1 packages/skyvern
 git submodule update --init --depth 1 packages/screenpipe
 ```
 
 `git submodule update --init --depth 1` fetches all top-level sources. Avoid `--recursive` unless you need an upstream's dependencies. Nothing automatically installs or runs upstream code. Read each upstream's own setup instructions before running it. Make changes to Caret outside submodules unless your team intentionally maintains an upstream fork.
 
-Screenpipe is pinned to its last pre-commercial-license commit, whose MIT grant excludes `ee/`. Skyvern and OpenRecall have AGPL terms; ActivityWatch has MPL terms. The root license applies only to original Caret files. See [THIRD_PARTY.md](THIRD_PARTY.md).
+Screenpipe retains its historical MIT pin, whose grant excludes `ee/`; coordinate any change with its owner. Skyvern has AGPL terms. The root license applies only to original Caret files. See [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ## Hackathon target
 

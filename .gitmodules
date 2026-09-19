@@ -6,14 +6,6 @@
 	path = packages/ghosttype
 	url = https://github.com/mk668a/GhostType.git
 	shallow = true
-[submodule "jev-ultrafast"]
-	path = packages/jev-ultrafast
-	url = https://github.com/browser-use/jev-ultrafast.git
-	shallow = true
-[submodule "typesafe-computer-use"]
-	path = packages/typesafe-computer-use
-	url = https://github.com/awlevin/typesafe-computer-use.git
-	shallow = true
 [submodule "computer-use-jev"]
 	path = packages/computer-use-jev
 	url = https://github.com/paulsmith/computer-use-jev.git
@@ -22,27 +14,7 @@
 	path = packages/skyvern
 	url = https://github.com/Skyvern-AI/skyvern.git
 	shallow = true
-[submodule "browser-harness"]
-	path = packages/browser-harness
-	url = https://github.com/browser-use/browser-harness.git
-	shallow = true
 [submodule "screenpipe"]
 	path = packages/screenpipe
 	url = https://github.com/screenpipe/screenpipe.git
-	shallow = true
-[submodule "activitywatch"]
-	path = packages/activitywatch
-	url = https://github.com/ActivityWatch/activitywatch.git
-	shallow = true
-[submodule "openrecall"]
-	path = packages/openrecall
-	url = https://github.com/openrecall/openrecall.git
-	shallow = true
-[submodule "backscroll"]
-	path = packages/backscroll
-	url = https://github.com/AnthonyDavidAdams/backscroll.git
-	shallow = true
-[submodule "retrace"]
-	path = packages/retrace
-	url = https://github.com/jhammant/retrace.git
 	shallow = true

@@ -4,6 +4,7 @@ import ApplicationServices
 final class HotKeyManager {
     var onHotKey: ((CGPoint) -> Void)?
     var onPinnedHotKey: ((Int) -> Void)?
+    var onCommandOptionHeld: ((Bool) -> Void)?
 
     private var globalMonitor: Any?
     private var localMonitor: Any?
@@ -66,6 +67,8 @@ final class HotKeyManager {
     }
 
     private func handle(_ event: NSEvent) {
+        reportCommandOptionHeld(from: event)
+
         if event.type == .keyDown {
             if handlePinnedShortcut(event) {
                 return
@@ -101,6 +104,11 @@ final class HotKeyManager {
         sawOtherKey = true
         onPinnedHotKey?(slot)
         return true
+    }
+
+    private func reportCommandOptionHeld(from event: NSEvent) {
+        let flags = event.modifierFlags.intersection([.command, .option, .shift, .control])
+        onCommandOptionHeld?(flags == [.command, .option])
     }
 
     private func slot(forKeyCode keyCode: UInt16) -> Int? {
