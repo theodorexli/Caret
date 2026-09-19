@@ -1,0 +1,26 @@
+FAIL (fixable)
+
+Level 3 plan caret-report-github-issue (replan after preflight 3). Prerequisites present. No creative docs were flagged. TDD units 1–5 put tests before production code; unit 6 is prose/policy. No scheduled change-detector was struck. No in-phase plan edits.
+
+The previous HostContext and request-reply decisions are named in the plan and match the code: freeze the host at showPanel before present; workflow.prepare is request-reply; install_offer clears _pending and does not take the in-flight slot; build_registry registers the adapter as a built-in; not-OSS is workflow_error, not failed; no-field accept is pid/bundle only.
+
+Fixable (plan must change before build):
+
+1. The browse-panel CaretActionStatusRow the plan names is the empty-skills row. browsePanel renders that row only when scoped, filteredSkills is empty, and the query is empty. Invoke requires a caret/skills/<id>/*.json skill (selectActionFromPanel for a non-gateway id only scopes; onRun/prepareWorkflow runs only after that JSON skill is clicked). After that click, filteredSkills is not empty, so the existing row never appears. Wiring workflow_error into unavailabilityText or that row leaves not-OSS invisible. Unit 5 must add a status row in browse chrome that stays visible after a skill exists (next to actionOffers, not inside the filteredSkills.isEmpty branch). Do not reuse the empty-skills-only row.
+
+2. The keep-panel rule never ends. onRun must not hidePanel so Cmd-1 can accept, but runOfferedAction / runAction never order the panel out. CaretPanel is .floating. execute then starts computer-use-jev to drive GitHub under that panel. Unit 5 must claim the offer (so invalidateContextualOffers keeps the executing id), then orderOut the panel before Jev starts, without a hidePanel that resumes capture and tears down the offer before accept is sent.
+
+Advisory (does not block if the two fixes above land):
+
+- selectActionFromPanel for this id only scopes. Seed a JSON skill in unit 3, or make this id call run/prepare on action select. A skill note alone does not create filteredSkills.
+- SkillActionRunner has no CoreBridgeProvider. CaretApp.onRun owns the live bridge; inject a prepareWorkflow callback. Do not spawn a second bridge.
+- availability() that is True whenever gh exists puts this workflow in registry.choices() for a jev/gateway judge. Pattern (the Mac default) will not pick it. Return False unless the frame carries an explicit-invoke mark so prepare_named can still run.
+- max_offer_age_seconds is 30s from mint (after gh returns).
+- Click-outside and Escape still call hidePanel during the gh wait.
+- panelQuery is not part of the complaint. Empty field plus empty pasteboard is empty-complaint even if the user typed in the search field.
+- Name the Jev goal template (new issue vs comment) so execute does not turn the raw complaint into a free-form goal. NativeComputerUseWorkflow refuses that.
+- Name the execute sample/refuse signal as a preparation.payload key. ContextFrame has no sample mark.
+- A pre-existing ambient in-flight that complete_failure-s still emits failed and sets backendStatus. install_offer should make that evaluation discarded; do not treat a late failed event as a completion outage on this path.
+- Requirement 8 (non-GitHub tracker hook) is only an invariant sentence. Put the comment in report_issue.py / github.py.
+
+Radical innovation (advisory, not applied): make this id a one-click explicit session. Selecting the action calls prepare immediately; while waiting, the browse panel is a dedicated session (click-outside off, status row always visible, actionOffers only this offer); the search field is the complaint when nonempty, else nearby_text plus pasteboard; on Cmd-1, claim the offer then orderOut the panel before Jev. That deletes two-click invoke, the empty-skills-only error row, empty-complaint-despite-typed-query, and panel-over-Jev in one change. Search stays on gh; accept stays offer.accept / computer-use-jev.

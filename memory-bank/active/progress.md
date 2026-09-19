@@ -148,3 +148,24 @@ Add a Caret skill that pauses the current app, understands a complaint, finds th
     - HostContext at showPanel, install_offer, built-in registry, and pid/bundle accept are named and match the current call sites
     - Non-gateway action select only scopes; prepare runs only after a caret/skills JSON skill is clicked, which hides the existing CaretActionStatusRow
     - Cmd-1 does not hide the panel; computer-use-jev would run under a .floating CaretPanel
+
+## 2026-09-19 - PLAN - COMPLETE
+
+* Work completed
+    - Replan 5 under an operator override to stop folding single preflight bullets; traced the whole explicit-invoke path in the current source rather than patching the last finding
+    - Read CaretApp, CoreBridgeProvider, SkillActionRunner, SelectionMonitor, FocusedTargetCapture, CoreBridgeClient, CoreProtocol, SkillRepository and CaretPaths on the Swift side, and bridge, router, engine, registry, context, unavailable and native_computer_use on the Python side
+    - Rewrote tasks.md as six TDD units naming concrete call sites, render conditions and accept-time panel and capture behavior
+* Decisions made
+    - One-click invoke: selectActionFromPanel runs the action instead of scoping, taking filteredSkills off the path
+    - A dedicated Model.explicitStatus row in browse-panel header chrome, independent of backendStatus and failSkillPreview
+    - The prepare reply is installed in CoreBridgeProvider's own store and announced via onActionsChanged, because syncActionOffers is the only writer of model.actionOffers and the only place Cmd-1 is armed
+    - Non-executing offers are dropped on install, because visibleExecutableActions sorts by UUID
+    - standDownForExplicitRun orders out after the synchronous claim; resumeAfterExplicitRun on the terminal state is the only place capture resumes
+    - Click-outside suppressed while a prepare is in flight; Escape stays the cancel
+    - Descriptor pins execution_method, sample_only and empty missing_inputs to satisfy CaretActionOffer.isExecutable
+    - Jev runs two goal templates, never the raw complaint
+* Insights
+    - Setting model.actionOffers from the reply is the subtlest trap on this path: it renders correctly, leaves Cmd-1 dead, and is erased by the next ambient event
+    - Router.accept compares the acceptance against _current_target as well as the offer, so capture must stay paused for the whole session
+    - CaretPaths.skillsRoot is nil without a project root, so the picker identity needs both the JSON skill directory and the seeded note
+    - actions.adapters() is asserted to hold exactly two ids, so test_the_action_table_matches_the_registered_ids is a planned modification, not a break
