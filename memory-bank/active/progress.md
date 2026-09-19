@@ -29,3 +29,26 @@ Add a Caret menu Debug item that shows a short last-2 preview of windows (recenc
     - CLI `history-debug` exits 0 when sections fail so the window can show the errors
 * Insights
     - Inference last-N stays hard-fail; debug is a separate glance that reports those failures
+
+## 2026-09-19 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Preflight recorded `PASS WITH ADVISORY` in `memory-bank/active/.preflight-status`
+* Decisions made
+    - Build as planned; apply cheap advisories: forward `lease_path`, lock JSON keys, spawn via `/usr/bin/env` + Homebrew PATH
+    - Debug last-N calls use `include_structure=False` and cap minutes records so the window does not hydrate discarded rows
+* Insights
+    - `last_n_minutes(2)` is a two-minute window, then the preview keeps two rows
+
+## 2026-09-19 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Validated the Level 2 plan against last-N APIs, CLI, status-bar menu, settings window, Screenpipe supervisor launch, and CaretTests membership
+    - Wrote `memory-bank/active/.preflight-status` first line `PASS WITH ADVISORY`
+* Decisions made
+    - Plan is acceptable as-is; leftover supabase creative stays out of scope
+    - Unit 4 AppKit wiring without new tests is not a TDD block (no UI harness; do not invent XCUITest)
+* Insights
+    - `last_n_minutes` hydrates accessibility structure for the whole window before the debug cap; a glance window can stall unless build skips structure / caps records
+    - App-spawned `python3` should reuse `ScreenpipeSupervisor` PATH/`env`, not assume a shell PATH
+    - `CaretTests` only compiles listed files; `HistoryDebug.swift` must join that target

@@ -1,7 +1,7 @@
 # Active Context
 
 ## Current Task: Caret menu debug last-N preview
-**Phase:** PLAN - COMPLETE
+**Phase:** BUILD - IN-PROGRESS
 
 ## What Was Done
 - Fresh `/niko` with operator input. Operator waived restatement approval and later phase gates.
@@ -11,4 +11,4 @@
 - After Reflect, operator already requested `/niko-archive` then `/github-open-a-pull-request-gh`.
 
 ## Next Step
-- Commit, then spawn Preflight with `cursor-grok-4.6-xhigh-fast`.
+- Execute the Level 2 TDD build: Python `debug_preview`, CLI, Swift helpers, menu window.
