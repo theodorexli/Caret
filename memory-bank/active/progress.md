@@ -13,3 +13,14 @@ Caret must launch pinned Screenpipe on app start when the expected port is free,
     - Level 2, not Level 1: this is a behavior change (port-gated launch) plus the missing bundle key, not a one-line crash fix
 * Insights
     - Installed Caret.app currently omits `CaretProjectRoot` because `INFOPLIST_KEY_CaretProjectRoot` is dropped by `GENERATE_INFOPLIST_FILE`
+
+## 2026-09-19 - PLAN - COMPLETE
+
+* Work completed
+    - Wrote Level 2 TDD plan: port probe + skip-spawn, Info.plist merge, docs
+* Decisions made
+    - Spawn decision is TCP listen on the pin port, not `/health`
+    - Skip-spawn still writes a lease only after pin-version `/health` (existing lease gate)
+    - `stop()` must not terminate a process Caret did not spawn
+* Insights
+    - Supervisor XCTest lives in the Xcode target only; `make check` will not run those tests
