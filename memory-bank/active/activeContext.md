@@ -4,8 +4,8 @@
 **Phase:** PLAN - COMPLETE
 
 ## What Was Done
-- Level 2 plan: port-gated spawn on `ScreenpipeSupervisor`, merge `CaretProjectRoot` via `INFOPLIST_FILE`, one-line starter doc update
-- Tests stay in existing `ScreenpipeSupervisorTests`; run with `xcodebuild test`
+- Re-planned after Preflight `FAIL (fixable)`: adopt path writes lease with sentinel `pid` `0`; tests use a stub `/health`; stale lease is deleted at `run` start
+- Docs will name the `CaretProjectRoot` effect on skills, memories, and notes
 
 ## Next Step
 - Preflight validation

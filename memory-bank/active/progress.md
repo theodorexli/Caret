@@ -24,3 +24,24 @@ Caret must launch pinned Screenpipe on app start when the expected port is free,
     - `stop()` must not terminate a process Caret did not spawn
 * Insights
     - Supervisor XCTest lives in the Xcode target only; `make check` will not run those tests
+
+## 2026-09-19 - PREFLIGHT - COMPLETE
+
+* Work completed
+    - Validated the plan against the codebase: TDD ordering, conventions, dependencies, conflicts, completeness
+    - Result: `FAIL (fixable)` - adopt-mode lease write has no planned test and no specified `pid` for the schema-required lease field
+* Decisions made
+    - Planner must pick the pid story for an adopted listener (sentinel 0 recommended) and add a behavior plus test, or scope the adopt-mode lease write out
+* Insights
+    - The `CaretProjectRoot` plist fix also activates SkillRepository, MemoryRepository, and CaretNote against the source tree - an unlisted behavior change
+    - A stale lease survives a failed/foreign-listener launch; deleting it at `run()` start would make lease freshness invariant (advisory)
+
+## 2026-09-19 - PLAN - COMPLETE
+
+* Work completed
+    - Re-planned: sentinel `pid` `0` for adopt-mode leases, stub `/health` tests, stale-lease delete at `run` start, docs note for skills/memories/notes
+* Decisions made
+    - Keep the adopt-mode lease write (option a), not scope it out
+    - Adopted pid is `0` so Caret does not claim the foreign process
+* Insights
+    - `run()` against a plain TCP bind would stall on `waitForHealth`; adopt tests need an HTTP stub
