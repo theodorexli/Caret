@@ -1,0 +1,11 @@
+PASS
+
+Reviewed Level 2 `caret-debug-last-n-preview` against the plan, brief, and preflight advisories. Leftover `memory-bank/active/creative/creative-supabase-company-control-plane.md` was ignored.
+
+Implementation is acceptable as-is. All five plan units are present: `debug_preview` with per-slice `ValueError`, `history-debug` exit 0, Swift command/format/load, Debug… menu window, README sentence. No Swift Screenpipe HTTP client. Inference `history-*` / `last_n_*` defaults still hard-fail and still hydrate structure.
+
+Advisories (do not block):
+- Successful debug sections are `{ok, items}` and omit `error`. Preflight asked to lock `{ok, error, items}`. Format treats missing `error` as success.
+- `HistoryDebug.format` has a `(none)` branch for `ok` + empty items. Last-N hard-fail means `debug_preview` does not emit that shape.
+- `HistoryDebug.load` blocks the appear path with `waitUntilExit()`. Acceptable under hackathon GSD; minutes cost is already bounded by `include_structure=False` and `record_cap`.
+- Homebrew PATH prefix is copied from `ScreenpipeSupervisor.run`, as preflight asked, not shared.

@@ -106,4 +106,13 @@ No new technology - validation not required. Reuses `python3 -m caret`, the exis
 - [x] Pre-Mortem complete
 - [x] Preflight
 - [x] Build
-- [ ] QA
+- [x] QA
+
+## QA Results
+
+✅ PASS — implementation is acceptable as-is.
+
+- Completeness: `debug_preview`, `history-debug`, Swift command/format/load, Debug… menu window, and the README sentence all exist and match the brief.
+- Regression: inference `last_n_*` defaults and `history-*` hard-fail exit 1 are unchanged; `test_minutes_returns_records` still asserts structure.
+- Integrity: no Swift HTTP client, no invented rows, leftover supabase creative unused.
+- Advisories (non-blocking): success sections omit `error`; format has an unused `(none)` empty-ok branch; `load` waits on the appear path; PATH prefix is copied from `ScreenpipeSupervisor`.

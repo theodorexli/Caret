@@ -64,3 +64,33 @@ Add a Caret menu Debug item that shows a short last-2 preview of windows (recenc
     - Debug window refreshes on appear by spawning `python3 -m caret history-debug`
 * Insights
     - A minutes glance that hydrates accessibility for 200 hits is not a glance; skip structure and cap records
+
+## 2026-09-19 - QA - COMPLETE
+
+* Work completed
+    - QA recorded `PASS` in `memory-bank/active/.qa-validation-status`
+* Decisions made
+    - Advisories (omitted success `error` key, unused `(none)` branch, blocking load) do not require a rebuild
+* Insights
+    - Inference last-N still hard-fails and still hydrates structure
+
+## 2026-09-19 - REFLECT - COMPLETE
+
+* Work completed
+    - Wrote `memory-bank/active/reflection/reflection-caret-debug-last-n-preview.md`
+    - Reconciled persistent files: productContext and techContext already updated in build; systemPatterns skip
+* Decisions made
+    - Next step is archive then PR, per the original invocation
+* Insights
+    - A last-N reuse that does not skip structure is not a glance
+
+## 2026-09-19 - QA - COMPLETE (PASS)
+
+* Work completed
+    - Semantic review of the last-N debug preview against the Level 2 plan, brief, and preflight advisories
+    - Wrote `memory-bank/active/.qa-validation-status` first line `PASS`
+* Decisions made
+    - Accept the implementation as-is; advisories do not require a Build rerun
+    - Leftover supabase creative remains out of scope
+* Insights
+    - The glance stays honest because it reuses `last_n_*` and reports their `ValueError`s per section instead of inventing a second history client
