@@ -54,7 +54,11 @@ for `.offered` rows, and preparing this action drops every other non-running
 offer so the chord is deterministic. Accept orders the panel out
 (`standDownForExplicitRun`) without `hidePanel`, so capture does not restart
 and the floating panel does not sit over the browser computer-use-jev is
-driving. A terminal state is the only resume.
+driving. A terminal state is the only resume. Escape cancels the session:
+the generation counter advances, a late `prepareWorkflow` install is discarded
+from the provider store, and `clearPanelScope` clears the searching sentence.
+A finished run writes its summary after that clear so the next panel open can
+show it.
 
 The ambient lane still owns `context.update`, the two Jev decisions, and
 inline Tab. Explicit invoke must not call `SkillActionRunner` and must not

@@ -5,7 +5,8 @@
 
 ## What Was Done
 - Built replan 6 end to end. Operator overrode the leftover replan-5 `FAIL (fixable)` gate.
-- Units 1–6 implemented. `make check` passed: 329 Python tests (4 skipped), 95 CaretTests, 72 CaretCoreTests, sources pin, Xcode Debug build.
+- Units 1–6 implemented. QA failed two cancel-path holes; those are now fixed.
+- `make check` after the fix: 329 Python (4 skipped), 98 CaretTests, 72 CaretCoreTests, sources pin, Xcode Debug build.
 
 ## Files created or modified
 - New: `caret/live_workflows/github.py`, `caret/live_workflows/report_issue.py`, `tests/test_report_issue.py`, `tests/test_report_issue_workflow.py`, `caret/skills/report-github-issue/default.json`, `caret/notes/skills/report-github-issue.md`
@@ -26,4 +27,4 @@
 - Pre-existing Python-discovery XCTest expected `/usr/bin/python3` while discovery prefers Homebrew 3.14; assertion now matches the candidate list. Not a product change.
 
 ## Next Step
-- QA review.
+- Re-run QA on the cancel-path fixes.

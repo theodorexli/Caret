@@ -283,6 +283,15 @@ final class CoreBridgeProvider: InlineCompletionProviding {
 
     func actionOffer(id: String) -> CaretActionOffer? { actionOffers[id] }
 
+    /// Drops a prepare that the user cancelled. A run already in flight is left
+    /// alone so its terminal state can still resume capture.
+    func discardPreparedOffer(_ proposalID: String) {
+        guard let offer = actionOffers[proposalID] else { return }
+        if offer.state == .running || executing.contains(proposalID) { return }
+        actionOffers[proposalID] = nil
+        onActionsChanged?()
+    }
+
     /// The user left the field or focus changed. Offers were prepared against
     /// that context, so they stop being valid whether or not the core has
     /// noticed yet. A run already in flight is left alone: it owns its own

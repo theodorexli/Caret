@@ -378,6 +378,7 @@ final class Model: ObservableObject {
         panelQuery = ""
         explicitPrepareInFlight = false
         explicitSessionActionID = nil
+        explicitStatus = ""
         onPanelLayoutChanged?()
     }
 
@@ -1446,8 +1447,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Task { @MainActor in
             do {
                 let frame = self.capture.explicitActionFrame(host: host, complaint: model.trimmedPanelQuery)
-                _ = try await self.bridge?.prepareWorkflow(id: action.id, frame: frame)
-                guard generation == self.explicitPrepareGeneration else { return }
+                let offer = try await self.bridge?.prepareWorkflow(id: action.id, frame: frame)
+                guard generation == self.explicitPrepareGeneration else {
+                    if let id = offer?.proposalID {
+                        self.bridge?.discardPreparedOffer(id)
+                    }
+                    return
+                }
                 model.finishExplicitInvoke()
             } catch let error as BridgeError {
                 guard generation == self.explicitPrepareGeneration else { return }

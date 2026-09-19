@@ -147,6 +147,72 @@ final class ActionAcceptanceTests: XCTestCase {
         XCTAssertEqual(changes, 0)
         XCTAssertTrue(provider.visibleExecutableActions.isEmpty)
     }
+
+    @MainActor
+    func testDiscardPreparedOfferRemovesAnOfferedRowAndNotifies() {
+        let provider = CoreBridgeProvider(capture: FocusedTargetCapture())
+        let offered = CaretActionOffer(
+            proposalID: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            revision: 2,
+            target: target(pid: 501, element: ""),
+            workflowID: "report-github-issue",
+            title: "Report",
+            effect: "",
+            evidence: [],
+            missingInputs: [],
+            executionMethod: "computer-use-jev",
+            sampleOnly: false,
+            state: .offered
+        )
+        provider.testingReplaceOffers([offered])
+        var changes = 0
+        provider.onActionsChanged = { changes += 1 }
+
+        provider.discardPreparedOffer(offered.proposalID)
+
+        XCTAssertEqual(changes, 1)
+        XCTAssertTrue(provider.visibleExecutableActions.isEmpty)
+        XCTAssertNil(provider.actionOffer(id: offered.proposalID))
+    }
+
+    @MainActor
+    func testDiscardPreparedOfferLeavesARunningRow() {
+        let provider = CoreBridgeProvider(capture: FocusedTargetCapture())
+        let running = CaretActionOffer(
+            proposalID: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            revision: 1,
+            target: target(pid: 501, element: ""),
+            workflowID: "book-calendar-link",
+            title: "Running",
+            effect: "",
+            evidence: [],
+            missingInputs: [],
+            executionMethod: "computer-use-jev",
+            sampleOnly: false,
+            state: .running
+        )
+        provider.testingReplaceOffers([running])
+        var changes = 0
+        provider.onActionsChanged = { changes += 1 }
+
+        provider.discardPreparedOffer(running.proposalID)
+
+        XCTAssertEqual(changes, 0)
+        XCTAssertEqual(provider.actionOffer(id: running.proposalID)?.state, .running)
+    }
+
+    @MainActor
+    func testClearPanelScopeClearsExplicitStatusAndPreparePanelDoesNot() {
+        let model = Model()
+        model.beginExplicitInvoke(actionID: "report-github-issue")
+        XCTAssertEqual(model.explicitStatus, "Searching GitHub…")
+
+        model.preparePanel(scopedActionID: nil)
+        XCTAssertEqual(model.explicitStatus, "Searching GitHub…")
+
+        model.clearPanelScope()
+        XCTAssertEqual(model.explicitStatus, "")
+    }
 }
 
 /// Blocker 2 is about who owns Cmd-1..3 and blocker 3 about not dropping

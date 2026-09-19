@@ -195,6 +195,23 @@ Add a Caret skill that pauses the current app, understands a complaint, finds th
     - `SearchFailed` is not not-OSS
     - No session state machine
 
+## 2026-09-19 - QA - FAIL (fixable)
+
+* Work completed
+    - QA subagent (Cursor Grok 4.6 High Fast) failed two cancel-path holes
+* Decisions made
+    - Fix in Build: discard a late prepare install; clear `explicitStatus` in `clearPanelScope` only
+* Insights
+    - Dropping the Swift reply is not enough when `prepareWorkflow` already mutated the offer store
+
+## 2026-09-19 - BUILD - QA FIX
+
+* Work completed
+    - `discardPreparedOffer` removes a cancelled `.offered` row; `runExplicitInvoke` calls it when generation no longer matches
+    - `clearPanelScope` clears `explicitStatus`; `preparePanel` does not, so a terminal summary can survive the next open
+* Decisions made
+    - Do not `dismiss` the core request; dropping the Mac store row is enough for Cmd-1
+
 ## 2026-09-19 - BUILD - COMPLETE
 
 * Work completed
@@ -207,3 +224,16 @@ Add a Caret skill that pauses the current app, understands a complaint, finds th
 * Insights
     - No creative-phase docs exist for this task
     - `syncActionOffers` remains the only writer of `model.actionOffers`; the prepare reply must land in the provider store
+
+## 2026-09-19 - QA - COMPLETE (FAIL)
+
+* Work completed
+    - Reviewed replan 6 against the Python port/adapter/router/bridge path, the Mac explicit-invoke lane, the planned tests, and the three docs
+    - Wrote `memory-bank/active/.qa-validation-status` with first line `FAIL`
+* Decisions made
+    - FAIL (fixable): Build must rerun. Not a plan rewrite.
+    - Happy-path research, `workflow.prepare`, `install_offer`, offered-only Cmd-1, stand-down, and terminal resume match the plan
+    - Blocking issues are cancel disposal: late `prepareWorkflow` still installs, and `"Searching GitHub…"` survives hide
+* Insights
+    - The generation Int cannot fence a side effect that already ran inside `prepareWorkflow`
+    - Clearing `explicitStatus` belongs on `clearPanelScope` (cancel and resume), not on `preparePanel` (next open must still show the terminal summary)

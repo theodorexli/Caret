@@ -328,6 +328,24 @@ Prepare needs network. Execute needs `CARET_COMPUTER_USE_JEV` and `TYPESAFE_API_
 - **The action never appeared in the picker on a machine with existing notes.** `CaretPaths.skillsRoot` needs a project root; both the JSON skill directory and the note are seeded, and the prerequisite is written down.
 - **The complaint was empty even though the user typed one.** `model.trimmedPanelQuery` is passed as the complaint and wins over nearby text.
 
+## QA Results
+
+❌ FAIL — two cancel-path holes must change before acceptance. Happy-path prepare/install/accept/Jev matches the plan.
+
+### Blocking
+
+1. **Cancel does not dispose a late `prepareWorkflow`.** `AppDelegate` bumps `explicitPrepareGeneration` and ignores the awaited return, but `CoreBridgeProvider.prepareWorkflow` already replaced the offer set and fired `onActionsChanged` before that check. Escape-then-reopen can show the cancelled offer and arm Cmd-1. Sol-3 said dropping the reply is enough; the install is a side effect of the call, so the reply is not what was dropped.
+2. **`explicitStatus` is not cleared on hide or `preparePanel`.** `beginExplicitInvoke` leaves `"Searching GitHub…"`. `clearPanelScope` / `preparePanel` reset only `explicitPrepareInFlight` and `explicitSessionActionID`. After Escape, every later panel open keeps that sentence. The plan required clearing explicit state so a stale sentence never reappears. `resumeAfterExplicitRun` should still set the terminal summary *after* `clearPanelScope`; do not also wipe status in `preparePanel` or that summary dies on the next `showPanel`.
+
+### Advisories
+
+- `explicitSessionActionID` is written and never read. Resume identity is `explicitProposalID`, which is the right seam.
+- User-visible match evidence is the issue title, not a body summary. The GET is used only for token overlap.
+- Jev templates interpolate only slug or issue URL. The complaint never reaches the GitHub form unless the user pastes it. Planned, still a weak product.
+- `_run_jev` is a copy of `NativeComputerUseWorkflow.execute`. Planned mirror, still DRY debt.
+- `memory-bank/systemPatterns.md` still says three seeds and only the sample planner executes.
+- `docs/bridge-protocol.md` says `workflow.prepare` emits no `invalidated` line. `install_offer` still invalidates a prior offer through the existing callback, so a superseded ambient offer does emit that event.
+
 ## Status
 
 - [x] Component analysis complete
