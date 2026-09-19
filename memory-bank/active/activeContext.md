@@ -1,11 +1,12 @@
 # Active Context
 
 ## Current Task: translate-selection-or-clipboard
-**Phase:** COMPLEXITY-ANALYSIS - COMPLETE
+**Phase:** BUILD - COMPLETE
 
 ## What Was Done
-- Intent restated and approved: Translate uses the current selection when text is selected, and the clipboard when nothing is selected.
-- Classified as Level 1: isolated correction of Translate's input source; single component (skill-action input resolution), no architectural change.
+- Translate now takes a non-empty selection if one exists, otherwise the clipboard. Other gateway skills still use the caret line.
+- `SkillActionInput` is the testable resolver. Caret keeps `rememberedSelection` when the monitor goes nil because Caret is frontmost.
+- `make check` passed: Python 300 tests (4 skipped), Swift CaretTests + CaretCoreTests, pin check, xcodebuild Debug.
 
 ## Next Step
-- Load the Level 1 workflow and enter Build.
+- Level 1 QA via `/niko-qa` subagent.

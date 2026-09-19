@@ -34,6 +34,52 @@ struct SkillActionSnapshot: Equatable {
     let selectedText: String
 }
 
+/// Pure input resolution for gateway skills. Kept off `SkillActionRunner` so tests do not need MainActor.
+enum SkillActionInput {
+    /// Source text for a gateway skill. Translate uses a non-empty selection or the clipboard — never the caret line.
+    static func sourceText(
+        actionID: String,
+        selectedText: String,
+        caretLine: String?,
+        clipboard: String?
+    ) -> String? {
+        let selected = selectedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !selected.isEmpty {
+            return selectedText
+        }
+        if actionID != "translate" {
+            let line = (caretLine ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !line.isEmpty {
+                return line
+            }
+        }
+        let clip = (clipboard ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return clip.isEmpty ? nil : clip
+    }
+
+    /// Which target supplies Translate's selection. A live empty selection means "use the clipboard."
+    static func translateTarget(
+        lastTarget: SelectionTarget?,
+        panelContextTarget: SelectionTarget?,
+        rememberedSelection: SelectionTarget?
+    ) -> SelectionTarget? {
+        if let lastTarget {
+            return hasSelectedText(lastTarget) ? lastTarget : nil
+        }
+        if let panelContextTarget, hasSelectedText(panelContextTarget) {
+            return panelContextTarget
+        }
+        if let rememberedSelection, hasSelectedText(rememberedSelection) {
+            return rememberedSelection
+        }
+        return nil
+    }
+
+    private static func hasSelectedText(_ target: SelectionTarget) -> Bool {
+        !target.selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
 @MainActor
 final class SkillActionRunner {
     static func hasInput(_ target: SelectionTarget) -> Bool {
@@ -66,7 +112,7 @@ final class SkillActionRunner {
             return
         }
 
-        guard let resolved = resolveInput(target: target) else {
+        guard let resolved = resolveInput(actionID: action.id, target: target) else {
             NSLog("[Caret] action=%@ skipped: no selection or clipboard text", action.id)
             model?.failSkillPreview(
                 actionID: action.id,
@@ -112,27 +158,42 @@ final class SkillActionRunner {
         }
     }
 
-    private func resolveInput(target: SelectionTarget?) -> (String, SkillActionSnapshot?)? {
-        if let target, let input = inputText(from: target) {
+    private func resolveInput(actionID: String, target: SelectionTarget?) -> (String, SkillActionSnapshot?)? {
+        let selected = target?.selectedText ?? ""
+        let caretLine: String?
+        if actionID == "translate" {
+            caretLine = nil
+        } else if let ctx = target?.fieldContext {
+            caretLine = Self.lineAtCaret(in: ctx)
+        } else {
+            caretLine = nil
+        }
+        let clip = NSPasteboard.general.string(forType: .string)
+
+        if let fromTarget = SkillActionInput.sourceText(
+            actionID: actionID,
+            selectedText: selected,
+            caretLine: caretLine,
+            clipboard: nil
+        ), let target {
             let snapshot = SkillActionSnapshot(
                 processID: target.focusedProcessID ?? 0,
                 axRole: target.axRole,
                 axSubrole: target.axSubrole,
-                inputText: input,
+                inputText: fromTarget,
                 selectedText: target.selectedText
             )
-            return (input, snapshot)
+            return (fromTarget, snapshot)
         }
-        if let clip = NSPasteboard.general.string(forType: .string)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-            !clip.isEmpty {
-            return (clip, nil)
+        if let fromClip = SkillActionInput.sourceText(
+            actionID: actionID,
+            selectedText: "",
+            caretLine: nil,
+            clipboard: clip
+        ) {
+            return (fromClip, nil)
         }
         return nil
-    }
-
-    private func inputText(from target: SelectionTarget) -> String? {
-        Self.gatewayInputText(from: target)
     }
 
     private func applyOutput(_ output: String, snapshot: SkillActionSnapshot) async {

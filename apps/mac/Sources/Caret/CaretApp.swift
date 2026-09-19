@@ -1054,6 +1054,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var lastTarget: SelectionTarget?
     /// Selection or input captured when the panel opens, before Caret becomes frontmost.
     private var panelContextTarget: SelectionTarget?
+    /// Last non-empty selection. Kept when the monitor publishes nil because Caret is frontmost.
+    private var rememberedSelection: SelectionTarget?
     private var lastPanelPoint: CGPoint = NSEvent.mouseLocation
     private var clickMonitor: Any?
     private var escapeMonitor: Any?
@@ -1100,7 +1102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         model.onRun = { [weak self] action, skill in
             guard let self, let model = self.model else { return }
-            let target = self.freshTargetForGatewayAction()
+            let target = self.freshTargetForGatewayAction(actionID: action.id)
             if GatewaySkillActions.contains(action.id) {
                 model.scopedActionID = action.id
                 model.panelQuery = ""
@@ -1208,6 +1210,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         monitor.onChange = { [weak self] target in
             guard let self, let model = self.model else { return }
             self.lastTarget = target
+            if let target {
+                if target.selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    self.rememberedSelection = nil
+                } else {
+                    self.rememberedSelection = target
+                }
+            }
             model.selectedText = target?.selectedText ?? ""
             model.sourceApp = target?.sourceApp
             if self.panel?.isVisible == true {
@@ -1317,7 +1326,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    private func freshTargetForGatewayAction() -> SelectionTarget? {
+    private func freshTargetForGatewayAction(actionID: String) -> SelectionTarget? {
+        if actionID == "translate" {
+            return SkillActionInput.translateTarget(
+                lastTarget: lastTarget,
+                panelContextTarget: panelContextTarget,
+                rememberedSelection: rememberedSelection
+            )
+        }
         if panel?.isVisible == true,
            let panelContextTarget,
            SkillActionRunner.hasInput(panelContextTarget) {
