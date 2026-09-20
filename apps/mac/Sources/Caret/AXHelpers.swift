@@ -19,63 +19,59 @@ enum AXHelpers {
 
     static func focusedElement(in app: NSRunningApplication) -> AXUIElement? {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
-        if let focused = copyElement(appElement, kAXFocusedUIElementAttribute as CFString) {
-            return focused
-        }
         let system = AXUIElementCreateSystemWide()
-        if let focused = copyElement(system, kAXFocusedUIElementAttribute as CFString) {
-            return focused
+        for source in [appElement, system] {
+            if let focused = copyElement(source, kAXFocusedUIElementAttribute as CFString) {
+                var pid: pid_t = 0
+                if AXUIElementGetPid(focused, &pid) == .success, pid == app.processIdentifier {
+                    return focused
+                }
+            }
         }
-        return copyElement(appElement, kAXFocusedWindowAttribute as CFString)
+        // A focused window is not a focused field. Searching it can revive an
+        // input the user has just left for a menu or scrollbar.
+        return nil
     }
 
-    /// Walks focused element, ancestors, and nearby descendants for a text-editable AX node.
     static func focusedTextElement(in app: NSRunningApplication) -> AXUIElement? {
         guard let focused = focusedElement(in: app) else { return nil }
         return bestEditableElement(startingAt: focused) ?? focused
     }
 
     static func bestEditableElement(startingAt start: AXUIElement) -> AXUIElement? {
-        if makeFieldContext(from: start) != nil {
-            return start
-        }
-
-        var current: AXUIElement? = start
-        for _ in 0..<18 {
-            guard let element = current else { break }
-            if let nested = findEditableDescendant(root: element, maxDepth: 5, nodeBudget: 160) {
-                return nested
-            }
-            if makeFieldContext(from: element) != nil {
-                return element
-            }
-            current = parent(of: element)
-        }
-
-        return findEditableDescendant(root: start, maxDepth: 8, nodeBudget: 240)
+        resolveEditable(
+            startingAt: start,
+            isEditable: { makeFieldContext(from: $0) != nil },
+            children: children(of:),
+            parent: parent(of:)
+        )
     }
 
-    private static func findEditableDescendant(
-        root: AXUIElement,
-        maxDepth: Int,
-        nodeBudget: Int
-    ) -> AXUIElement? {
-        var queue: [(AXUIElement, Int)] = [(root, 0)]
-        var visited = 0
-
-        while !queue.isEmpty {
-            let (element, depth) = queue.removeFirst()
-            visited += 1
-            if visited > nodeBudget { break }
-
-            if depth > 0, makeFieldContext(from: element) != nil {
-                return element
+    static func resolveEditable<Node>(
+        startingAt start: Node,
+        isEditable: (Node) -> Bool,
+        children: (Node) -> [Node],
+        parent: (Node) -> Node?
+    ) -> Node? {
+        if isEditable(start) { return start }
+        var queue: [(Node, Int)] = [(start, 0)]
+        var index = 0
+        while index < queue.count, index < 240 {
+            let (element, depth) = queue[index]
+            index += 1
+            if depth > 0, isEditable(element) { return element }
+            if depth < 8 {
+                queue.append(contentsOf: children(element).prefix(240 - queue.count).map { ($0, depth + 1) })
             }
-            if depth >= maxDepth { continue }
+        }
 
-            for child in children(of: element) {
-                queue.append((child, depth + 1))
-            }
+        // An editor may focus an internal child. Its editable ancestor is valid,
+        // but a sibling field reached through that ancestor is not focused.
+        var current = parent(start)
+        for _ in 0..<18 {
+            guard let element = current else { break }
+            if isEditable(element) { return element }
+            current = parent(element)
         }
         return nil
     }
