@@ -551,15 +551,31 @@ enum ActionsMenuMetrics {
     static let gatewayPanelHeight: CGFloat = gatewayMinHeight + 24
     /// Browse palette: search header + scrollable list (must match NSPanel frame).
     static let browsePanelHeight: CGFloat = 340
-    static let browseSearchBlockHeight: CGFloat = 52
     static let gatewayHeaderHeight: CGFloat = 50
     static let gatewayBodyPadding: CGFloat = 14
-    static var gatewayBodyHeight: CGFloat {
-        gatewayPanelHeight - gatewayHeaderHeight - (gatewayBodyPadding * 2)
-    }
+}
 
-    static var browseListHeight: CGFloat {
-        browsePanelHeight - browseSearchBlockHeight - 1
+struct ActionsBrowseLayout<Header: View, Rows: View>: View {
+    @ViewBuilder let header: Header
+    @ViewBuilder let rows: Rows
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+                .padding(.horizontal, ActionsMenuMetrics.panelInset)
+                .padding(.top, ActionsMenuMetrics.panelInset)
+                .padding(.bottom, 10)
+                .fixedSize(horizontal: false, vertical: true)
+            Divider().opacity(0.35)
+            ScrollView(.vertical, showsIndicators: true) {
+                rows
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 6)
+            }
+            // Scope navigation changes the header height; the list must use the remainder.
+            .frame(minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
@@ -582,10 +598,6 @@ struct SkillPickerView: View {
         return "Search actions or create"
     }
 
-    private var panelWidth: CGFloat {
-        gatewayScopedAction != nil ? ActionsMenuMetrics.gatewayWidth : ActionsMenuMetrics.width
-    }
-
     var body: some View {
         Group {
             if let action = gatewayScopedAction {
@@ -597,13 +609,12 @@ struct SkillPickerView: View {
                 browsePanel
             }
         }
-        .frame(width: panelWidth, alignment: .topLeading)
-        .modifier(GatewayPanelSizing(isGateway: gatewayScopedAction != nil))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .clipShape(RoundedRectangle(cornerRadius: ActionsMenuMetrics.panelCornerRadius, style: .continuous))
     }
 
     private var browsePanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        ActionsBrowseLayout {
             VStack(alignment: .leading, spacing: 10) {
                 if let action = model.scopedAction {
                     Button {
@@ -619,8 +630,6 @@ struct SkillPickerView: View {
                     .buttonStyle(.plain)
                 }
 
-                // B-01: offered / running / succeeded / failed, with the
-                // core's own summary and evidence. Never synthesized.
                 PanelSearchField(
                     text: $model.panelQuery,
                     placeholder: searchPlaceholder,
@@ -634,102 +643,70 @@ struct SkillPickerView: View {
                         model.submitCreateFromQuery()
                     }
                 }
-
-                if !model.actionOffers.isEmpty {
-                    ScrollView(.vertical, showsIndicators: true) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            ForEach(model.actionOffers) { offer in
-                                CaretActionOfferRow(offer: offer) {
-                                    model.runOfferedAction(offer)
-                                }
-                            }
+            }
+        } rows: {
+            LazyVStack(alignment: .leading, spacing: ActionsMenuMetrics.rowSpacing) {
+                ForEach(model.actionOffers) { offer in
+                    CaretActionOfferRow(offer: offer) {
+                        model.runOfferedAction(offer)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 4)
+                }
+                if model.scopedAction == nil {
+                    if model.settingsMatchesSearch {
+                        SkillRow(title: "Settings", subtitle: "Accessibility and Caret", accent: false) {
+                            model.openSettings()
                         }
                     }
-                    .frame(maxHeight: 120)
-                }
-            }
-            .padding(.horizontal, ActionsMenuMetrics.panelInset)
-            .padding(.top, ActionsMenuMetrics.panelInset)
-            .padding(.bottom, 10)
-
-            Divider().opacity(0.35)
-
-            ScrollView(.vertical, showsIndicators: true) {
-                LazyVStack(alignment: .leading, spacing: ActionsMenuMetrics.rowSpacing) {
-                    if model.scopedAction == nil {
-                        if model.settingsMatchesSearch {
-                            SkillRow(title: "Settings", subtitle: "Accessibility and Caret", accent: false) {
-                                model.openSettings()
-                            }
-                        }
-                        if model.filteredActions.isEmpty, !model.trimmedPanelQuery.isEmpty, !model.settingsMatchesSearch {
-                            EmptyResultsHint(text: "No matching actions")
-                        }
-                        ForEach(model.filteredActions) { action in
-                            ActionRow(
-                                title: action.title,
-                                shortcut: model.shortcutLabel(for: action),
-                                isPinned: model.pinStore.isPinned(action.id),
-                                canPin: model.canPin(action),
-                                onPin: { model.togglePin(action) },
-                                onSelect: { model.selectActionFromPanel(action) }
-                            )
-                        }
-                        if model.showCreateRow {
-                            CreateRow(model: model)
-                        }
-                    } else {
-                        let _ = model.skillsVersion
-                        // B-05: a scope with no skills used to render nothing
-                        // at all, leaving no next step. Say what is actually
-                        // available before offering to create anything.
-                        if model.filteredSkills.isEmpty, model.trimmedPanelQuery.isEmpty {
-                            CaretActionStatusRow(
-                                title: "Nothing ready to run here",
-                                detail: model.scopedAction.map { model.unavailabilityText(for: $0) }
-                                    ?? "Type a name to create a skill for this action.",
-                                tone: .unavailable
-                            )
-                        }
-                        if model.filteredSkills.isEmpty, !model.trimmedPanelQuery.isEmpty {
-                            EmptyResultsHint(text: "No matching skills")
-                        }
-                        ForEach(model.filteredSkills) { skill in
-                            SkillRow(title: skill.name, subtitle: skill.description) {
-                                model.run(skill: skill)
-                            }
-                        }
-                        if model.showCreateRow {
-                            CreateRow(model: model)
+                    if model.filteredActions.isEmpty, !model.trimmedPanelQuery.isEmpty, !model.settingsMatchesSearch {
+                        EmptyResultsHint(text: "No matching actions")
+                    }
+                    ForEach(model.filteredActions) { action in
+                        ActionRow(
+                            title: action.title,
+                            shortcut: model.shortcutLabel(for: action),
+                            isPinned: model.pinStore.isPinned(action.id),
+                            canPin: model.canPin(action),
+                            onPin: { model.togglePin(action) },
+                            onSelect: { model.selectActionFromPanel(action) }
+                        )
+                    }
+                    if model.showCreateRow {
+                        CreateRow(model: model)
+                    }
+                } else {
+                    let _ = model.skillsVersion
+                    // B-05: a scope with no skills used to render nothing
+                    // at all, leaving no next step. Say what is actually
+                    // available before offering to create anything.
+                    if model.filteredSkills.isEmpty, model.trimmedPanelQuery.isEmpty {
+                        CaretActionStatusRow(
+                            title: "Nothing ready to run here",
+                            detail: model.scopedAction.map { model.unavailabilityText(for: $0) }
+                                ?? "Type a name to create a skill for this action.",
+                            tone: .unavailable
+                        )
+                    }
+                    if model.filteredSkills.isEmpty, !model.trimmedPanelQuery.isEmpty {
+                        EmptyResultsHint(text: "No matching skills")
+                    }
+                    ForEach(model.filteredSkills) { skill in
+                        SkillRow(title: skill.name, subtitle: skill.description) {
+                            model.run(skill: skill)
                         }
                     }
+                    if model.showCreateRow {
+                        CreateRow(model: model)
+                    }
                 }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 6)
             }
-            .frame(height: ActionsMenuMetrics.browseListHeight, alignment: .topLeading)
         }
-        .frame(width: ActionsMenuMetrics.width, height: ActionsMenuMetrics.browsePanelHeight, alignment: .topLeading)
         .onAppear {
             searchFocused = true
         }
         .onChange(of: model.scopedActionID) { _, _ in
             searchFocused = true
-        }
-    }
-}
-
-/// Gateway panels use a fixed height so the header never compresses when the body scrolls.
-private struct GatewayPanelSizing: ViewModifier {
-    let isGateway: Bool
-
-    func body(content: Content) -> some View {
-        if isGateway {
-            content
-                .frame(height: ActionsMenuMetrics.gatewayPanelHeight, alignment: .topLeading)
-        } else {
-            content
-                .frame(height: ActionsMenuMetrics.browsePanelHeight, alignment: .topLeading)
         }
     }
 }
@@ -761,11 +738,11 @@ private struct GatewayActionPanel: View {
             Divider().opacity(0.25)
             resultCard
                 .padding(ActionsMenuMetrics.gatewayBodyPadding)
-                .frame(height: ActionsMenuMetrics.gatewayBodyHeight, alignment: .topLeading)
+                .frame(minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(
-            width: ActionsMenuMetrics.gatewayWidth,
-            height: ActionsMenuMetrics.gatewayPanelHeight,
+            maxWidth: .infinity,
+            maxHeight: .infinity,
             alignment: .topLeading
         )
         .clipShape(RoundedRectangle(cornerRadius: ActionsMenuMetrics.panelCornerRadius, style: .continuous))
@@ -1030,16 +1007,24 @@ final class CaretPanel: NSPanel {
 
     private func frame(near point: CGPoint, width: CGFloat, height: CGFloat) -> NSRect {
         let size = CGSize(width: width, height: height)
-        let screen = AXHelpers.screen(containing: point)
-        let visible = screen?.visibleFrame ?? NSRect(origin: .zero, size: size)
-        let margin: CGFloat = 12
+        let visible = AXHelpers.screen(containing: point)?.visibleFrame
+            ?? NSRect(origin: .zero, size: size)
+        return Self.fittedFrame(near: point, size: size, visibleFrame: visible)
+    }
+
+    static func fittedFrame(near point: CGPoint, size: CGSize, visibleFrame: CGRect) -> CGRect {
+        // Cap the size as well as the origin: clamping only the origin still clips
+        // a panel on a small display or a display with a large Dock.
+        let margin = min(12, visibleFrame.width / 2, visibleFrame.height / 2)
+        let available = visibleFrame.insetBy(dx: margin, dy: margin)
+        let size = CGSize(width: min(size.width, available.width), height: min(size.height, available.height))
         var origin = CGPoint(x: point.x + 16, y: point.y - size.height / 2)
-        if origin.x + size.width > visible.maxX - margin {
+        if origin.x + size.width > available.maxX {
             origin.x = point.x - size.width - 16
         }
-        origin.x = min(max(origin.x, visible.minX + margin), visible.maxX - size.width - margin)
-        origin.y = min(max(origin.y, visible.minY + margin), visible.maxY - size.height - margin)
-        return NSRect(origin: origin, size: size)
+        origin.x = min(max(origin.x, available.minX), available.maxX - size.width)
+        origin.y = min(max(origin.y, available.minY), available.maxY - size.height)
+        return CGRect(origin: origin, size: size)
     }
 }
 
@@ -1392,7 +1377,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    private func hidePanel() {
+    private func hidePanel(restoreFocus: Bool = true) {
         panel?.orderOut(nil)
         inlineCompletion?.setPaused(false)
         inlineCompletion?.setVisibleChoiceCount(0)
@@ -1400,7 +1385,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         removeClickOutside()
         model?.clearPanelScope()
         panelContextTarget = nil
-        restoreTypingAppFocus()
+        if restoreFocus { restoreTypingAppFocus() }
         monitor.refreshNow()
         trigger.update(target: lastTarget)
         tabCompletions.update(target: lastTarget)
@@ -1432,7 +1417,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 if self.trigger.buttonFrame.contains(screenPoint) {
                     return
                 }
-                self.hidePanel()
+                // The click owns the next focus target; do not reactivate the old editor.
+                self.hidePanel(restoreFocus: false)
             }
         }
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
